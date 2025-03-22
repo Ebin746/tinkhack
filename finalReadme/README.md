@@ -2,5443 +2,1694 @@
 
 ## File List
 
-- app.js
-- config\cloudinary.js
-- middleware\auth.js
-- models\baselineScreening.js
-- models\medicalRecord.js
-- models\user.js
-- package.json
-- python_server\gemini_rag.py
-- python_server\rag_server.py
-- python_server\simple_rag.py
-- python_server\__pycache__\gemini_rag.cpython-310.pyc
-- python_server\__pycache__\test_add_data.cpython-310.pyc
-- README.md
-- utils\gemini.js
-- views\components\footer.html
-- views\components\header.html
-- views\components\modal.html
-- views\components\notification.html
-- views\components\sidebar.html
-- views\pages\auth\login.ejs
-- views\pages\auth\signup.ejs
-- views\pages\caregiver\appointment-management.ejs
-- views\pages\caregiver\dashboard.ejs
-- views\pages\caregiver\feedback-management.ejs
-- views\pages\caregiver\patient-info.ejs
-- views\pages\caregiver\progress-reports.ejs
-- views\pages\navigator\appointment-management.ejs
-- views\pages\navigator\care-plan.ejs
-- views\pages\navigator\dashboard.ejs
-- views\pages\navigator\learning.ejs
-- views\pages\navigator\patient-management.ejs
-- views\pages\navigator\progress-tracking.ejs
-- views\pages\navigator\resources.ejs
-- views\pages\patient\appointments.ejs
-- views\pages\patient\baseline-screening.ejs
-- views\pages\patient\care-plan.ejs
-- views\pages\patient\dashboard.ejs
-- views\pages\patient\feedback.ejs
-- views\pages\patient\medical-insights.ejs
-- views\pages\patient\medical-records.ejs
-- views\pages\patient\profile.ejs
-- views\pages\patient\reports.ejs
-- views\pages\patient\resources.ejs
-- views\partials\footer.ejs
-- views\partials\header.ejs
-- views\partials\sidebar.ejs
+- Z-Runner\character.cpp
+- Z-Runner\character.h
+- Z-Runner\Enemy.cpp
+- Z-Runner\Enemy.h
+- Z-Runner\Game.cpp
+- Z-Runner\Game.h
+- Z-Runner\Object.cpp
+- Z-Runner\Object.h
+- Z-Runner\PathFinder.cpp
+- Z-Runner\PathFinder.h
+- Z-Runner\PathFindingNode.cpp
+- Z-Runner\PathFindingNode.h
+- Z-Runner\Platform.cpp
+- Z-Runner\Platform.h
+- Z-Runner\Player.cpp
+- Z-Runner\Player.h
+- Z-Runner\Projectile.cpp
+- Z-Runner\Projectile.h
+- Z-Runner\SceneGenerator.cpp
+- Z-Runner\SceneGenerator.h
+- Z-Runner\Z-Runner.cpp
+- Z-Runner\Z-Runner.vcxproj
+- Z-Runner\Z-Runner.vcxproj.filters
+- Z-Runner\Z-Runner.vcxproj.user
+- Z-Runner.sln
 
 ## File Contents
 
-### app.js
+### Z-Runner\character.cpp
 ```
-if (process.env.NODE_ENV !== "production") {
-  require("dotenv").config();
-}
-var express = require("express");
-var path = require("path");
-var bodyParser = require("body-parser");
-const ejs = require("ejs");
-const mongoose = require("mongoose");
-const passport = require("passport");
-const LocalStrategy = require("passport-local");
-const session = require("express-session");
-const User = require("./models/user");
-const medicalRecordsRoutes = require("./routes/medicalRecords");
-const authRoutes = require("./routes/auth");
-const patientRoutes = require("./routes/patient");
-const navigatorRoutes = require("./routes/navigator");
-const caregiverRoutes = require("./routes/caregiver");
-const baselineScreeningRoutes = require("./routes/baselineScreening");
-const geminiRoutes = require("./routes/gemini");
+#include "Character.h"
 
-var app = express();
-
-const ATLASDB_URL = process.env.ATLASDB_URL;
-
-// Connect to MongoDB
-mongoose
-  .connect(ATLASDB_URL)
-  .then(() => console.log("Connected to MongoDB"))
-  .catch((err) => console.error("Could not connect to MongoDB", err));
-
-// Configure middleware
-app.set("view engine", "ejs");
-app.use(express.urlencoded({ extended: true }));
-app.use(express.json({ limit: "50mb" }));
-app.use(express.urlencoded({ extended: true, limit: "50mb" }));
-app.use(bodyParser.urlencoded({ extended: true }));
-app.use(express.static(path.join(__dirname, "public")));
-
-// Configure session
-app.use(
-  session({
-    secret: process.env.SESSION_SECRET || "our little secret",
-    resave: false,
-    saveUninitialized: false,
-  })
-);
-
-// Initialize Passport
-app.use(passport.initialize());
-app.use(passport.session());
-
-// Configure Passport-Local Strategy
-passport.use(new LocalStrategy(User.authenticate()));
-passport.serializeUser(User.serializeUser());
-passport.deserializeUser(User.deserializeUser());
-
-// Authentication middleware
-const isLoggedIn = (req, res, next) => {
-  if (req.isAuthenticated()) {
-    return next();
-  }
-  res.redirect("/login");
-};
-
-app.get("/login", (req, res) => {
-  res.render("pages/auth/login.ejs");
-});
-
-app.post("/login", (req, res, next) => {
-  const { username, password, userType } = req.body;
-
-  passport.authenticate("local", (err, user, info) => {
-    if (err) {
-      return res.status(500).json({
-        success: false,
-        message: "An error occurred during login",
-      });
-    }
-
-    if (!user) {
-      return res.status(401).json({
-        success: false,
-        message: "Invalid username or password",
-      });
-    }
-
-    // Check if selected user type matches the registered user type
-    if (user.userType !== userType) {
-      return res.status(401).json({
-        success: false,
-        message: `You are registered as a ${user.userType}. Please select the correct user type.`,
-      });
-    }
-
-    req.logIn(user, (err) => {
-      if (err) {
-        return res.status(500).json({
-          success: false,
-          message: "An error occurred during login",
-        });
-      }
-
-      // Redirect based on user type
-      switch (user.userType) {
-        case "Patient":
-          return res.status(200).json({
-            success: true,
-            redirect: "/patient/dashboard",
-          });
-        case "Patient-Navigator":
-          return res.status(200).json({
-            success: true,
-            redirect: "/navigator/dashboard",
-          });
-        case "Caregiver":
-          return res.status(200).json({
-            success: true,
-            redirect: "/caregiver/dashboard",
-          });
-        default:
-          return res.status(401).json({
-            success: false,
-            message: "Invalid user type",
-          });
-      }
-    });
-  })(req, res, next);
-});
-
-app.get("/signup", (req, res) => {
-  res.render("pages/auth/signup.ejs");
-});
-
-app.post("/signup", async (req, res) => {
-  try {
-    const {
-      username,
-      password,
-      fullName,
-      email,
-      age,
-      phone,
-      sex,
-      address,
-      userType,
-    } = req.body;
-
-    // Check if user already exists
-    const existingUser = await User.findOne({ $or: [{ username }, { email }] });
-    if (existingUser) {
-      return res.status(400).json({
-        success: false,
-        message:
-          existingUser.username === username
-            ? "Username already exists"
-            : "Email already registered",
-      });
-    }
-
-    const user = new User({
-      username,
-      fullName,
-      email,
-      age,
-      phone,
-      sex,
-      address,
-      userType,
-    });
-
-    await User.register(user, password);
-
-    // Log the user in after registration
-    passport.authenticate("local")(req, res, function () {
-      res.status(200).json({
-        success: true,
-        message: "Account created successfully!",
-        redirect: `/${userType.toLowerCase()}/dashboard`,
-      });
-    });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({
-      success: false,
-      message: "An error occurred during registration",
-    });
-  }
-});
-
-app.get("/logout", (req, res) => {
-  req.logout(function (err) {
-    if (err) {
-      return next(err);
-    }
-    res.redirect("/login");
-  });
-});
-
-app.get("/patient/dashboard", isLoggedIn, (req, res) => {
-  if (req.user.userType !== "Patient") {
-    return res.redirect(`/${req.user.userType.toLowerCase()}/dashboard`);
-  }
-  res.render("pages/patient/dashboard.ejs", {
-    user: req.user,
-    path: "/patient/dashboard",
-  });
-});
-
-app.get("/patient/medical-records", isLoggedIn, (req, res) => {
-  if (req.user.userType !== "Patient") {
-    return res.redirect(`/${req.user.userType.toLowerCase()}/dashboard`);
-  }
-  res.render("pages/patient/medical-records.ejs", {
-    user: req.user,
-    path: "/patient/medical-records",
-  });
-});
-
-app.get("/patient/appointments", isLoggedIn, (req, res) => {
-  if (req.user.userType !== "Patient") {
-    return res.redirect(`/${req.user.userType.toLowerCase()}/dashboard`);
-  }
-  res.render("pages/patient/appointments.ejs", {
-    user: req.user,
-    path: "/patient/appointments",
-  });
-});
-
-app.get("/navigator/dashboard", isLoggedIn, (req, res) => {
-  if (req.user.userType !== "Patient-Navigator") {
-    return res.redirect(`/${req.user.userType.toLowerCase()}/dashboard`);
-  }
-  res.render("pages/navigator/dashboard.ejs", {
-    user: req.user,
-    path: "/navigator/dashboard",
-  });
-});
-
-app.get("/caregiver/dashboard", isLoggedIn, (req, res) => {
-  if (req.user.userType !== "Caregiver") {
-    return res.redirect(`/${req.user.userType.toLowerCase()}/dashboard`);
-  }
-  res.render("pages/caregiver/dashboard.ejs", {
-    user: req.user,
-    path: "/caregiver/dashboard",
-  });
-});
-
-// Add medical records routes
-app.use("/api/medical-records", medicalRecordsRoutes);
-
-// Use routes
-app.use(authRoutes);
-app.use(patientRoutes);
-app.use(navigatorRoutes);
-app.use(caregiverRoutes);
-app.use(baselineScreeningRoutes);
-app.use("/api/gemini", geminiRoutes);
-
-// Add a server listening section at the end of the file
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-});
-
-module.exports = app;
-
-app.get("*", (req, res) => {
-  res.redirect("/login");
-});
-
-```
-
-### config\cloudinary.js
-```
-const cloudinary = require("cloudinary").v2;
-const dotenv = require("dotenv");
-dotenv.config();
-
-// Configure Cloudinary
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-  secure: true,
-});
-
-module.exports = cloudinary;
-
-```
-
-### middleware\auth.js
-```
-/**
- * Middleware to check if user is logged in
- */
-const isLoggedIn = (req, res, next) => {
-  if (req.isAuthenticated()) {
-    return next();
-  }
-  res.status(401).json({ success: false, message: "Authentication required" });
-};
-
-module.exports = { isLoggedIn };
-
-```
-
-### models\baselineScreening.js
-```
-const mongoose = require("mongoose");
-
-const baselineScreeningSchema = new mongoose.Schema({
-  patient: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "User",
-    required: true,
-  },
-  // Drug and Medication History
-  currentMedications: {
-    type: [String],
-    default: [],
-  },
-  medicationAllergies: {
-    type: [String],
-    default: [],
-  },
-  recreationalDrugUse: {
-    type: String,
-    enum: ["Never", "Former", "Current", "Prefer not to say"],
-    default: "Never",
-  },
-
-  // Disease History
-  chronicConditions: {
-    type: [String],
-    default: [],
-  },
-  pastSurgeries: {
-    type: [String],
-    default: [],
-  },
-  mentalHealthConditions: {
-    type: [String],
-    default: [],
-  },
-
-  // Family History
-  familyHistory: {
-    cancer: { type: Boolean, default: false },
-    heartDisease: { type: Boolean, default: false },
-    diabetes: { type: Boolean, default: false },
-    autoimmune: { type: Boolean, default: false },
-    mentalHealth: { type: Boolean, default: false },
-    other: { type: String, default: "" },
-  },
-
-  // Social Determinants of Health
-  sdoh: {
-    race: { type: String, default: "" },
-    education: { type: String, default: "" },
-    housing: { type: String, default: "" },
-    healthcareAccess: { type: String, default: "" },
-    employmentStatus: { type: String, default: "" },
-    foodSecurity: { type: String, default: "" },
-    transportationAccess: { type: String, default: "" },
-    socialSupport: { type: String, default: "" },
-  },
-
-  // Additional Information
-  additionalInfo: {
-    type: String,
-    default: "",
-  },
-
-  // Risk Assessment Results
-  riskAssessment: {
-    riskLevel: {
-      type: String,
-      enum: ["Low", "Medium", "High", "Not Assessed"],
-      default: "Not Assessed",
-    },
-    possibleIssues: {
-      type: [String],
-      default: [],
-    },
-    analysisExplanation: {
-      type: String,
-      default: "",
-    },
-  },
-
-  // Timestamps
-  createdAt: {
-    type: Date,
-    default: Date.now,
-  },
-  updatedAt: {
-    type: Date,
-    default: Date.now,
-  },
-});
-
-module.exports = mongoose.model("BaselineScreening", baselineScreeningSchema);
-
-```
-
-### models\medicalRecord.js
-```
-const mongoose = require("mongoose");
-
-const medicalRecordSchema = new mongoose.Schema({
-  patient: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "User",
-    required: true,
-  },
-  title: {
-    type: String,
-    required: true,
-  },
-  description: {
-    type: String,
-    required: true,
-  },
-  recordType: {
-    type: String,
-    enum: [
-      "Prescription",
-      "Lab Report",
-      "Imaging",
-      "Discharge Summary",
-      "Other",
-    ],
-    required: true,
-  },
-  fileUrl: {
-    type: String,
-    required: true,
-  },
-  cloudinaryPublicId: {
-    type: String,
-    required: true,
-  },
-  recordDate: {
-    type: Date,
-    required: true,
-  },
-  uploadDate: {
-    type: Date,
-    default: Date.now,
-  },
-  // For RAG
-  vectorEmbedding: {
-    type: [Number],
-    sparse: true,
-  },
-  textContent: {
-    type: String,
-  },
-  metadata: {
-    type: Map,
-    of: String,
-  },
-});
-
-module.exports = mongoose.model("MedicalRecord", medicalRecordSchema);
-
-```
-
-### models\user.js
-```
-const mongoose = require("mongoose");
-const passportLocalMongoose = require("passport-local-mongoose");
-
-const UserSchema = new mongoose.Schema({
-  fullName: {
-    type: String,
-    required: true,
-  },
-  email: {
-    type: String,
-    required: true,
-    unique: true,
-  },
-  age: {
-    type: Number,
-    required: true,
-  },
-  phone: {
-    type: String,
-    required: true,
-  },
-  sex: {
-    type: String,
-    enum: ["Male", "Female"],
-    required: true,
-  },
-  address: {
-    type: String,
-    required: true,
-  },
-  userType: {
-    type: String,
-    enum: ["Patient", "Patient-Navigator", "Caregiver"],
-    required: true,
-  },
-});
-
-// Add username, hash and salt field to schema
-UserSchema.plugin(passportLocalMongoose);
-
-module.exports = mongoose.model("User", UserSchema);
-
-```
-
-### package.json
-```
+void Character::refreshAttack()
 {
-  "name": "tinkhack-2.0",
-  "version": "0.0.0",
-  "private": true,
-  "scripts": {
-    "start": "node app.js"
-  },
-  "dependencies": {
-    "@google/generative-ai": "^0.1.3",
-    "axios": "^1.8.4",
-    "body-parser": "^1.20.3",
-    "cloudinary": "^2.6.0",
-    "connect-flash": "^0.1.1",
-    "connect-mongo": "^5.1.0",
-    "cors": "^2.8.5",
-    "dotenv": "^16.4.7",
-    "ejs": "^3.1.10",
-    "express": "^4.21.2",
-    "express-session": "^1.18.1",
-    "form-data": "^4.0.2",
-    "method-override": "^3.0.0",
-    "mongoose": "^8.10.0",
-    "multer": "^1.4.5-lts.2",
-    "passport": "^0.7.0",
-    "passport-local": "^1.0.0",
-    "passport-local-mongoose": "^8.0.0",
-    "path": "^0.12.7",
-    "pdf-parse": "^1.1.1"
-  }
+	sleep(milliseconds(1000.f/attackRate));
+	canAttack = true;
+}
+
+Vector2f Character::toVector2f(Vector2u vector)
+{
+	return Vector2f(vector.x, vector.y);
+}
+
+Texture* Character::getNextTexture(string textureName)
+{
+	try {
+		textureIndex[textureName] = (textureIndex[textureName] + 1) % textures[textureName].size();
+	}
+	catch (exception e) {
+		cout << e.what() << endl;
+		textureIndex[textureName] = 0;
+	}
+
+	return textures[textureName][textureIndex[textureName]];
+}
+
+int Character::isCollidingWith(RectangleShape shape, bool selfCheck, FloatRect itemToCheck)
+{
+	FloatRect playerBounds = self.getGlobalBounds();
+	FloatRect objectBounds = shape.getGlobalBounds();
+
+	if (!selfCheck) {
+		playerBounds = itemToCheck;
+	}
+
+	if (!playerBounds.intersects(objectBounds)) return -1;
+
+	float playerRight = playerBounds.left + playerBounds.width;
+	float playerBottom = playerBounds.top + playerBounds.height;
+	float objectRight = objectBounds.left + objectBounds.width;
+	float objectBottom = objectBounds.top + objectBounds.height;
+
+	float overlapLeft = playerRight - objectBounds.left;
+	float overlapRight = objectRight - playerBounds.left;
+	float overlapTop = playerBottom - objectBounds.top;
+	float overlapBottom = objectBottom - playerBounds.top;
+
+	bool fromLeft = overlapLeft < overlapRight && overlapLeft < overlapTop && overlapLeft < overlapBottom;
+	bool fromRight = overlapRight < overlapLeft && overlapRight < overlapTop && overlapRight < overlapBottom;
+	bool fromTop = overlapTop < overlapBottom && overlapTop < overlapLeft && overlapTop < overlapRight;
+	bool fromBottom = overlapBottom < overlapTop && overlapBottom < overlapLeft && overlapBottom < overlapRight;
+
+	if (fromLeft) {
+		return 3;
+	}
+	else if (fromRight) {
+		return 1;
+	}
+	else if (fromTop) {
+		return 0;
+	}
+	else if (fromBottom) {
+		return 2;
+	}
+}
+
+bool Character::isOnGround(RectangleShape shape)
+{
+	RectangleShape groundChecker;
+	groundChecker.setSize(Vector2f(size.x * 0.9, 10));
+	groundChecker.setPosition(self.getPosition().x + size.x * 0.05, self.getPosition().y + size.y - 10);
+
+	return groundChecker.getGlobalBounds().intersects(shape.getGlobalBounds());
+}
+
+void Character::updatePosition(Vector2f position)
+{
+	self.setPosition(position);
+}
+
+void Character::updateSize(Vector2f size)
+{
+	self.setScale(vectorDivide(size, toVector2f(self.getTexture()->getSize())));
+}
+
+void Character::receiveDamage(float damage)
+{
+	health -= damage;
+	died = health <= 0;
+}
+
+void Character::setVelocity(Vector2f velocity)
+{
+	if (!isFalling && velocity.y > 0) {
+		velocity.y = 0;
+		this->velocity.y = 0;
+	}
+	this->velocity = velocity;
+}
+
+void Character::addVelocity(Vector2f velocity)
+{
+	if (!isFalling && velocity.y > 0) {
+		velocity.y = 0;
+		this->velocity.y = 0;
+	}
+	this->velocity += velocity;
+}
+
+Vector2f Character::getSize()
+{
+	return size;
+}
+
+Vector2f Character::getPosition()
+{
+	return self.getPosition();
+}
+
+Vector2f Character::getVelocity()
+{
+	return velocity;
 }
 
 ```
 
-### python_server\gemini_rag.py
+### Z-Runner\character.h
 ```
-from flask import Flask, request, jsonify
-from flask_cors import CORS
-import os
-import json
-import google.generativeai as genai
-import numpy as np
+#pragma once
 
-app = Flask(__name__)
-CORS(app)
+#include <SFML/Graphics/RectangleShape.hpp>
+#include<SFML/System/Thread.hpp>
+#include<SFML/System/Sleep.hpp>
 
-# Initialize Gemini
-GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', 'AIzaSyBpwbZVpuwYwKA_F3A-bEEhvTHYjoTUIgE')
-genai.configure(api_key=GEMINI_API_KEY)
+#include "Object.h"
 
-# Models - using Gemini 2.0
-generation_model = genai.GenerativeModel('gemini-1.5-flash')
-# Using text generation for embeddings since embed_content is not available
-embedding_model = generation_model
+#include<unordered_map>;
+#include <vector>
 
-# In-memory storage
-chunks_db = {}  # user_id -> [chunk_objects]
+class Character : public Object
+{
+protected:
+	int attackRate;
 
-def generate_embedding(text):
-    """Generate pseudo-embedding using Gemini model responses."""
-    try:
-        # Use a prompt to extract key features for vector representation
-        prompt = f"""
-        Extract 20 key medical terms or concepts from the following text, separated by commas.
-        If there are fewer than 20 terms, just extract what's available.
-        TEXT: {text}
-        """
-        
-        result = generation_model.generate_content(prompt)
-        terms = result.text.split(',')
-        
-        # Create a basic binary vector based on term presence
-        # This is a simplified approach since we can't use proper embeddings
-        terms_vector = np.zeros(100)  # Using a 100-dimensional space
-        for i, term in enumerate(terms[:100]):
-            terms_vector[i % 100] = 1  # Set positions based on terms
-            
-        # Normalize to unit vector for cosine similarity
-        norm = np.linalg.norm(terms_vector)
-        if norm > 0:
-            terms_vector = terms_vector / norm
-            
-        return terms_vector
-    except Exception as e:
-        print(f"Error generating embedding: {str(e)}")
-        return np.zeros(100)  # Return zero vector on error
+	Vector2f velocity;
+	vector<RectangleShape> gunShots;
+	void refreshAttack();
+	Vector2f size;
 
-def cosine_similarity(a, b):
-    """Calculate cosine similarity between two vectors."""
-    return np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b))
+	unordered_map<string, vector<Texture*>> textures;
 
-def chunk_text(text, chunk_size=1000, overlap=200):
-    """Split text into chunks with overlap."""
-    chunks = []
-    for i in range(0, len(text), chunk_size - overlap):
-        chunk = text[i:i + chunk_size]
-        if len(chunk) > 100:  # Only add chunks with substantial text
-            chunks.append(chunk)
-    return chunks
+	float health = 20;
 
-def search_chunks(user_id, query_embedding, limit=5):
-    """Search for relevant chunks."""
-    if user_id not in chunks_db or not chunks_db[user_id]:
-        return []
-    
-    results = []
-    for chunk in chunks_db[user_id]:
-        if chunk.get('embedding') is None:
-            continue
-        score = cosine_similarity(query_embedding, chunk['embedding'])
-        results.append((score, chunk))
-    
-    # Sort by similarity score
-    results.sort(reverse=True, key=lambda x: x[0])
-    
-    # Return top results, deduplicated by record_id
-    top_results = []
-    seen_records = set()
-    
-    for score, chunk in results[:10]:  # Look at top 10 for deduplication
-        record_id = chunk['metadata']['recordId']
-        if record_id in seen_records:
-            continue
-        
-        seen_records.add(record_id)
-        top_results.append({
-            'text': chunk['text'],
-            'metadata': chunk['metadata'],
-            'score': float(score)
-        })
-        
-        if len(top_results) >= limit:
-            break
-    
-    return top_results
+	Thread* attackingTimer;
 
-@app.route('/process_record', methods=['POST'])
-def process_record():
-    """Process a medical record and store embeddings."""
-    try:
-        # Get record data
-        record_data = json.loads(request.form.get('record_data'))
-        file = request.files.get('file')
-        
-        if not file:
-            return jsonify({"success": False, "message": "No file provided"}), 400
-        
-        # For simplicity, use description as text content
-        description = record_data.get("description", "")
-        title = record_data.get("title", "")
-        extracted_text = f"{title}. {description}"
-        
-        # Generate summary using Gemini
-        summary_prompt = f"""
-        Please provide a brief medical summary of the following:
-        {extracted_text}
-        
-        Focus on key medical details, diagnoses, treatments, and important values.
-        Keep it under 200 words.
-        """
-        
-        summary_response = generation_model.generate_content(summary_prompt)
-        summary = summary_response.text
-        
-        # Create metadata
-        metadata = {
-            "title": record_data.get("title", ""),
-            "description": record_data.get("description", ""),
-            "recordType": record_data.get("recordType", ""),
-            "recordDate": record_data.get("recordDate", ""),
-            "userId": record_data.get("userId", ""),
-            "recordId": record_data.get("recordId", ""),
-            "textSummary": summary
-        }
-        
-        # Chunk the text
-        chunks = chunk_text(extracted_text)
-        
-        # Store chunks with embeddings
-        chunk_ids = []
-        user_id = record_data.get("userId")
-        
-        # Initialize user's chunks store if needed
-        if user_id not in chunks_db:
-            chunks_db[user_id] = []
-        
-        # Store each chunk
-        for i, chunk_text in enumerate(chunks):
-            chunk_id = f"{record_data.get('recordId')}_chunk_{i}"
-            
-            # Generate embedding
-            embedding = generate_embedding(chunk_text)
-            
-            # Store chunk
-            chunk_data = {
-                'id': chunk_id,
-                'text': chunk_text,
-                'embedding': embedding,
-                'metadata': {
-                    **metadata,
-                    "chunk_index": i,
-                    "total_chunks": len(chunks)
-                }
-            }
-            
-            chunks_db[user_id].append(chunk_data)
-            chunk_ids.append(chunk_id)
-        
-        print(f"Processed record: {title}, user: {user_id}, chunks: {len(chunks)}")
-        
-        return jsonify({
-            "success": True, 
-            "message": "Record processed successfully",
-            "chunk_ids": chunk_ids,
-            "text_length": len(extracted_text),
-            "chunks_count": len(chunks),
-            "summary": summary
-        })
-        
-    except Exception as e:
-        print(f"Error processing record: {str(e)}")
-        return jsonify({"success": False, "message": str(e)}), 500
+	template <typename T>
 
-@app.route('/query_records', methods=['POST'])
-def query_records():
-    """Get information from medical records based on a specific question."""
-    try:
-        data = request.json
-        question = data.get('question')
-        user_id = data.get('userId')
-        
-        if not question or not user_id:
-            return jsonify({"success": False, "message": "Question and userId are required"}), 400
-        
-        # Generate embedding for the question
-        query_embedding = generate_embedding(question)
-        
-        # TEMPORARY SOLUTION: Use hardcoded sample user ID for testing
-        sample_user_id = "123456789"
-        
-        # Search for relevant chunks (using sample user id for testing)
-        results = search_chunks(sample_user_id, query_embedding, limit=5)
-        
-        if not results:
-            return jsonify({
-                "success": True,
-                "answer": "I couldn't find any relevant information in your medical records. Please try a different question or check if you have uploaded records related to this query."
-            })
-            
-        # Combine relevant contexts
-        contexts = []
-        record_info = set()
-        
-        for result in results:
-            text = result['text']
-            metadata = result['metadata']
-            
-            title = metadata.get('title', '')
-            record_type = metadata.get('recordType', '')
-            record_date = metadata.get('recordDate', '')
-            
-            record_info.add(f"- {title} ({record_type}) from {record_date}")
-            contexts.append(text)
-        
-        # Create prompt for Gemini
-        context_text = "\n\n".join(contexts)
-        record_info_text = "\n".join(record_info)
-        
-        prompt = f"""
-        You are a medical assistant helping a patient understand their medical records.
-        Below is information from the patient's medical records:
+	T vectorDivide(T x, T y) {
+		return Vector2f(x.x / y.x, x.y / y.y);
+	}
 
-        {context_text}
+	Vector2f toVector2f(Vector2u vector);
 
-        Based only on the information above, please answer this question:
-        "{question}"
+	unordered_map<string, int> textureIndex;
 
-        Rules:
-        1. Only use information from the provided medical records
-        2. If the information is not in the records, say so
-        3. Be clear and use patient-friendly language
-        4. Keep the answer concise but informative
-        5. If you're unsure about any details, express that uncertainty
-        6. Do not make assumptions beyond what's in the records
+	Texture* getNextTexture(string textureName);
 
-        Referenced medical records:
-        {record_info_text}
-        """
-        
-        # Generate answer with Gemini
-        response = generation_model.generate_content(prompt)
-        answer = response.text
-            
-        return jsonify({
-            "success": True,
-            "answer": answer,
-            "sources": list(record_info)
-        })
-        
-    except Exception as e:
-        print(f"Error querying records: {str(e)}")
-        return jsonify({"success": False, "message": str(e)}), 500
+public :
+	bool isFalling = true;
+	bool canAttack = true;
+	bool died = false;
 
-@app.route('/debug/chunks', methods=['GET'])
-def debug_chunks():
-    """Debug endpoint to check chunks_db."""
-    try:
-        result = {}
-        for user_id, chunks in chunks_db.items():
-            result[user_id] = {
-                'chunk_count': len(chunks),
-                'sample': chunks[0] if chunks else None
-            }
-        return jsonify({
-            "success": True,
-            "data": result
-        })
-    except Exception as e:
-        print(f"Error debugging chunks: {str(e)}")
-        return jsonify({"success": False, "message": str(e)}), 500
+	int isCollidingWith(RectangleShape shape, bool selfCheck, FloatRect itemToCheck = FloatRect());
+	bool isOnGround(RectangleShape shape);
 
-@app.route('/debug/add_sample_data', methods=['GET'])
-def add_sample_data_route():
-    """Add sample medical record data for testing."""
-    try:
-        from test_add_data import add_sample_data
-        result = add_sample_data()
-        return jsonify(result)
-    except Exception as e:
-        print(f"Error adding sample data: {str(e)}")
-        return jsonify({"success": False, "message": str(e)}), 500
+	void updatePosition(Vector2f position);
+	void updateSize(Vector2f size);
 
-if __name__ == '__main__':
-    # Add sample data
-    try:
-        print("Adding sample data...")
-        # Sample user ID
-        user_id = "123456789"
-        
-        # Sample medical records
-        sample_records = [
-            {
-    "recordId": "sample_record_2",
-    "title": "Outpatient Rheumatology Summary",
-    "description": "Patient is a 56-year-old female with a known case of systemic lupus erythematosus and scleroderma overlap with interstitial lung disease on medication. Presenting with tightness of skin on the fists and ulcers on the pulp of the fingers. Treatment includes multiple medications such as Linezolid, Clopidogrel, Amlodipine, Domperidone, Omeprazole, Bosentan, Sildenafil Citrate, Prednisolone, Mycophenolate Mofetil, L-methylfolate calcium, and Ciprofloxacin. Review advised after 4 weeks.",
-    "recordType": "Rheumatology Outpatient Summary",
-    "recordDate": "2021-07-02",
-    "patientName": "Ms Rukhsana Shaheen",
-    "hospitalNo": "MH005990453",
-    "episodeNo": "03000582270",
-    "doctor": "Dr Darshan Singh Bhakuni",
-    "department": "Rheumatology MHD",
-    "ageSex": "56 yrs/Female",
-    "consultationType": "Video consultation",
-    
-},
+	void receiveDamage(float damage);
 
-            {
-                "recordId": "sample_record_1",
-                "title": "Annual Physical Examination",
-                "description": "Patient is a 45-year-old male in good health. Blood pressure: 120/80 mmHg. Heart rate: 72 bpm. Currently taking Lisinopril 10mg daily for hypertension and Metformin 500mg twice daily for type 2 diabetes. Lab results show normal kidney function, cholesterol within normal limits. Recommended follow-up in 12 months.",
-                "recordType": "Physical Examination",
-                "recordDate": "2023-03-15",
-                "doctor_name": "Dr Darshan Singh Bhakuni",
-                "hospital_name": "Medanta Hospital",
-                "hospital_no": "MH005990453",
-            
-            },
-            {
-                "recordId": "sample_record_2",
-                "title": "Cardiology Consultation",
-                "description": "Patient referred for evaluation of chest pain. ECG shows normal sinus rhythm. Stress test was negative for ischemia. Echo shows normal ejection fraction of 60%. Recommended to continue current medications: Aspirin 81mg daily and Atorvastatin 20mg at bedtime. Advised to exercise regularly and follow a low-salt diet.",
-                "recordType": "Specialist Consultation",
-                "recordDate": "2023-05-20",
-                "doctor_name": "Dr Darshan Singh Bhakuni",
-                "hospital_name": "Medanta Hospital",
-                "hospital_no": "MH005990453",
-            
-            },
-            {
-                "recordId": "sample_record_3",
-                "title": "Lab Results",
-                "description": "Complete Blood Count: WBC 6.5, RBC 4.8, Hemoglobin 14.2, Hematocrit 42%, Platelets 250. Comprehensive Metabolic Panel: Sodium 140, Potassium 4.2, Glucose 110 (slightly elevated), A1C 6.4%. Lipid Panel: Total Cholesterol 185, LDL 110, HDL 45, Triglycerides 150. Thyroid Function: TSH 2.8, within normal range.",
-                "recordType": "Lab Report",
-                "recordDate": "2023-06-10",
-                "doctor_name": "Dr Darshan Singh Bhakuni",
-                "hospital_name": "Medanta Hospital",
-                "hospital_no": "MH005990453",
-            }
-        ]
-        
-        # Initialize user's chunks store
-        chunks_db[user_id] = []
-        
-        total_chunks = 0
-        
-        for record in sample_records:
-            # Create full text
-            full_text = f"{record['title']}. {record['description']}"
-            
-            # Chunk text
-            chunks = chunk_text(full_text)
-            total_chunks += len(chunks)
-            
-            # Create metadata
-            metadata = {
-                "recordId": record["recordId"],
-                "title": record["title"],
-                "description": record["description"],
-                "recordType": record["recordType"],
-                "recordDate": record["recordDate"]
-            }
-            
-            # Store chunks with embeddings
-            for i, chunk_text_content in enumerate(chunks):
-                chunk_id = f"{record['recordId']}_chunk_{i}"
-                
-                # Generate embedding
-                embedding = generate_embedding(chunk_text_content)
-                
-                # Store chunk
-                chunk_data = {
-                    'id': chunk_id,
-                    'text': chunk_text_content,
-                    'embedding': embedding,
-                    'metadata': {
-                        **metadata,
-                        "chunk_index": i,
-                        "total_chunks": len(chunks)
-                    }
-                }
-                
-                chunks_db[user_id].append(chunk_data)
-        
-        print(f"Added {len(sample_records)} sample records with {total_chunks} chunks for user {user_id}")
-        
-    except Exception as e:
-        print(f"Error adding sample data: {str(e)}")
-    
-    # Start the server
-    app.run(debug=True, port=5000) 
-```
+	void setVelocity(Vector2f velocity);
+	void addVelocity(Vector2f velocity);
 
-### python_server\rag_server.py
-```
-from flask import Flask, request, jsonify
-from flask_cors import CORS
-import os
-import json
-import io
-import fitz  # PyMuPDF
-import pytesseract
-from PIL import Image
-from groclake.vectorlake import VectorLake
-from groclake.modellake import ModelLake
-
-app = Flask(__name__)
-CORS(app)
-
-# Initialize API keys
-os.environ['GROCLAKE_API_KEY'] = '43ec517d68b6edd3015b3edc9a11367b'
-os.environ['GROCLAKE_ACCOUNT_ID'] = '7376846f01e0b6e5f1568fef7b48a148'
-GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', 'AIzaSyBpwbZVpuwYwKA_F3A-bEEhvTHYjoTUIgE')
-
-# Initialize lakes
-vectorlake = VectorLake()
-modellake = ModelLake()
-
-def extract_text_from_pdf(pdf_bytes):
-    """Extract text from PDF file bytes."""
-    try:
-        doc = fitz.open(stream=pdf_bytes, filetype="pdf")
-        text = ""
-        for page in doc:
-            text += page.get_text()
-        return text
-    except Exception as e:
-        print(f"Error extracting text from PDF: {str(e)}")
-        return ""
-
-def extract_text_from_image(image_bytes):
-    """Extract text from image using OCR."""
-    try:
-        image = Image.open(io.BytesIO(image_bytes))
-        text = pytesseract.image_to_string(image)
-        return text
-    except Exception as e:
-        print(f"Error extracting text from image: {str(e)}")
-        return ""
-
-def clean_text(text):
-    """Clean extracted text."""
-    # Remove excessive whitespace
-    text = " ".join(text.split())
-    # Remove non-printable characters
-    text = "".join(char for char in text if char.isprintable())
-    return text
-
-def chunk_text(text, chunk_size=1000, overlap=200):
-    """Split text into chunks with overlap."""
-    chunks = []
-    start = 0
-    text_len = len(text)
-
-    while start < text_len:
-        end = start + chunk_size
-        # If this is not the first chunk, start a bit earlier to create overlap
-        if start > 0:
-            start = max(0, start - overlap)
-        # If this is the last chunk, just go to the end
-        if end >= text_len:
-            chunks.append(text[start:])
-            break
-        # Find the last period or newline to break at a natural point
-        last_period = text.rfind('.', start, end)
-        last_newline = text.rfind('\n', start, end)
-        break_point = max(last_period, last_newline)
-        if break_point > start:
-            end = break_point + 1
-        chunks.append(text[start:end])
-        start = end
-
-    return chunks
-
-@app.route('/process_record', methods=['POST'])
-def process_record():
-    """Process a medical record and store vectors in VectorLake."""
-    try:
-        # Get record data and file
-        record_data = json.loads(request.form.get('record_data'))
-        file = request.files.get('file')
-        
-        if not file:
-            return jsonify({"success": False, "message": "No file provided"}), 400
-        
-        # Extract text based on file type
-        file_bytes = file.read()
-        file_ext = file.filename.split('.')[-1].lower()
-        
-        if file_ext == 'pdf':
-            extracted_text = extract_text_from_pdf(file_bytes)
-        elif file_ext in ['jpg', 'jpeg', 'png']:
-            extracted_text = extract_text_from_image(file_bytes)
-        else:
-            return jsonify({"success": False, "message": "Unsupported file type"}), 400
-        
-        # Clean the extracted text
-        extracted_text = clean_text(extracted_text)
-        
-        if not extracted_text:
-            return jsonify({"success": False, "message": "No text could be extracted from the file"}), 400
-        
-        # Generate summary using ModelLake
-        summary_prompt = f"""
-        Please provide a brief medical summary of the following text from a {record_data.get('recordType', '')}:
-        {extracted_text[:3000]}...
-        
-        Focus on key medical details, diagnoses, treatments, and important values.
-        Keep it under 200 words.
-        """
-        
-        summary_response = modellake.complete({
-            "prompt": summary_prompt,
-            "token_size": 500
-        })
-        summary = summary_response.get("text", "")
-        
-        # Create metadata
-        metadata = {
-            "title": record_data.get("title", ""),
-            "description": record_data.get("description", ""),
-            "recordType": record_data.get("recordType", ""),
-            "recordDate": record_data.get("recordDate", ""),
-            "userId": record_data.get("userId", ""),
-            "recordId": record_data.get("recordId", ""),
-            "textSummary": summary
-        }
-        
-        # Chunk the text
-        chunks = chunk_text(extracted_text)
-        
-        # Store chunks in VectorLake
-        vector_ids = []
-        user_id = record_data.get("userId")
-        vector_namespace = f"medical_records_{user_id}"
-        
-        # Create vector namespace for the user if it doesn't exist
-        try:
-            vectorlake.create({
-                "name": vector_namespace,
-                "type": "text"
-            })
-        except Exception as e:
-            # Vector namespace may already exist
-            print(f"Vector namespace exists or error: {str(e)}")
-        
-        # Store each chunk
-        for i, chunk in enumerate(chunks):
-            chunk_id = f"{record_data.get('recordId')}_chunk_{i}"
-            
-            try:
-                # Generate and store vector
-                vectorlake.store({
-                    "id": chunk_id,
-                    "vector_name": vector_namespace,
-                    "vector_document": chunk,
-                    "metadata": {
-                        **metadata,
-                        "chunk_index": i,
-                        "total_chunks": len(chunks)
-                    }
-                })
-                vector_ids.append(chunk_id)
-            except Exception as e:
-                print(f"Error storing vector for chunk {i}: {str(e)}")
-        
-        return jsonify({
-            "success": True, 
-            "message": "Record processed successfully",
-            "vector_ids": vector_ids,
-            "text_length": len(extracted_text),
-            "chunks_count": len(chunks),
-            "summary": summary
-        })
-        
-    except Exception as e:
-        print(f"Error processing record: {str(e)}")
-        return jsonify({"success": False, "message": str(e)}), 500
-
-@app.route('/query_records', methods=['POST'])
-def query_records():
-    """Get information from medical records based on a specific question."""
-    try:
-        data = request.json
-        question = data.get('question')
-        user_id = data.get('userId')
-        
-        if not question or not user_id:
-            return jsonify({"success": False, "message": "Question and userId are required"}), 400
-        
-        # Search in VectorLake
-        vector_namespace = f"medical_records_{user_id}"
-        
-        try:
-            search_results = vectorlake.search({
-                "query": question,
-                "vector_name": vector_namespace,
-                "limit": 5
-            })
-            results = search_results.get("results", [])
-        except Exception as e:
-            print(f"Error searching vectors: {str(e)}")
-            return jsonify({"success": False, "message": f"Error searching records: {str(e)}"}), 500
-        
-        if not results:
-            return jsonify({
-                "success": True,
-                "answer": "I couldn't find any relevant information in your medical records. Please try a different question or check if you have uploaded records related to this query."
-            })
-            
-        # Combine relevant contexts
-        contexts = []
-        record_info = set()
-        
-        for result in results:
-            text = result.get("vector_document", "")
-            metadata = result.get("metadata", {})
-            
-            title = metadata.get('title', '')
-            record_type = metadata.get('recordType', '')
-            record_date = metadata.get('recordDate', '')
-            
-            record_info.add(f"- {title} ({record_type}) from {record_date}")
-            contexts.append(text)
-        
-        # Create prompt for ModelLake
-        context_text = "\n\n".join(contexts)
-        record_info_text = "\n".join(record_info)
-        
-        prompt = f"""
-        You are a medical assistant helping a patient understand their medical records.
-        Below is information from the patient's medical records:
-
-        {context_text}
-
-        Based only on the information above, please answer this question:
-        "{question}"
-
-        Rules:
-        1. Only use information from the provided medical records
-        2. If the information is not in the records, say so
-        3. Be clear and use patient-friendly language
-        4. Keep the answer concise but informative
-        5. If you're unsure about any details, express that uncertainty
-        6. Do not make assumptions beyond what's in the records
-
-        Referenced medical records:
-        {record_info_text}
-        """
-        
-        # Generate answer with ModelLake
-        response = modellake.complete({
-            "prompt": prompt,
-            "token_size": 2000
-        })
-        
-        answer = response.get("text", "I'm sorry, I couldn't generate a proper response.")
-            
-        return jsonify({
-            "success": True,
-            "answer": answer,
-            "sources": list(record_info)
-        })
-        
-    except Exception as e:
-        print(f"Error querying records: {str(e)}")
-        return jsonify({"success": False, "message": str(e)}), 500
-
-if __name__ == '__main__':
-    app.run(debug=True, port=5000) 
-```
-
-### python_server\simple_rag.py
-```
-from flask import Flask, request, jsonify
-from flask_cors import CORS
-import os
-import json
-import google.generativeai as genai
-from groclake.vectorlake import VectorLake
-from groclake.modellake import ModelLake
-
-app = Flask(__name__)
-CORS(app)
-
-# Initialize API keys
-os.environ['GROCLAKE_API_KEY'] = '43ec517d68b6edd3015b3edc9a11367b'
-os.environ['GROCLAKE_ACCOUNT_ID'] = '7376846f01e0b6e5f1568fef7b48a148'
-GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', 'AIzaSyBpwbZVpuwYwKA_F3A-bEEhvTHYjoTUIgE')
-
-# Initialize lakes
-vectorlake = VectorLake()
-modellake = ModelLake()
-
-def chunk_text(text, chunk_size=1000, overlap=200):
-    """Split text into chunks with overlap."""
-    chunks = []
-    for i in range(0, len(text), chunk_size - overlap):
-        chunk = text[i:i + chunk_size]
-        if len(chunk) > 100:  # Only add chunks with substantial text
-            chunks.append(chunk)
-    return chunks
-
-@app.route('/process_record', methods=['POST'])
-def process_record():
-    """Process a medical record and store vectors in VectorLake."""
-    try:
-        # Get record data
-        record_data = json.loads(request.form.get('record_data'))
-        file = request.files.get('file')
-        
-        if not file:
-            return jsonify({"success": False, "message": "No file provided"}), 400
-        
-        # For simplicity, we'll just use the description as text content
-        # In a production app, you'd extract text from PDFs or use OCR for images
-        description = record_data.get("description", "")
-        title = record_data.get("title", "")
-        extracted_text = f"{title}. {description}"
-        
-        # Generate summary using ModelLake
-        summary_prompt = f"""
-        Please provide a brief medical summary of the following:
-        {extracted_text}
-        
-        Focus on key medical details, diagnoses, treatments, and important values.
-        Keep it under 200 words.
-        """
-        
-        summary_response = modellake.complete({
-            "prompt": summary_prompt,
-            "token_size": 500
-        })
-        summary = summary_response.get("text", "")
-        
-        # Create metadata
-        metadata = {
-            "title": record_data.get("title", ""),
-            "description": record_data.get("description", ""),
-            "recordType": record_data.get("recordType", ""),
-            "recordDate": record_data.get("recordDate", ""),
-            "userId": record_data.get("userId", ""),
-            "recordId": record_data.get("recordId", ""),
-            "textSummary": summary
-        }
-        
-        # Chunk the text
-        chunks = chunk_text(extracted_text)
-        
-        # Store chunks in VectorLake
-        vector_ids = []
-        user_id = record_data.get("userId")
-        vector_namespace = f"medical_records_{user_id}"
-        
-        # Create vector namespace for the user if it doesn't exist
-        try:
-            vectorlake.create({
-                "name": vector_namespace,
-                "type": "text"
-            })
-        except Exception as e:
-            # Vector namespace may already exist
-            print(f"Vector namespace exists or error: {str(e)}")
-        
-        # Store each chunk
-        for i, chunk in enumerate(chunks):
-            chunk_id = f"{record_data.get('recordId')}_chunk_{i}"
-            
-            try:
-                # Generate and store vector
-                vectorlake.store({
-                    "id": chunk_id,
-                    "vector_name": vector_namespace,
-                    "vector_document": chunk,
-                    "metadata": {
-                        **metadata,
-                        "chunk_index": i,
-                        "total_chunks": len(chunks)
-                    }
-                })
-                vector_ids.append(chunk_id)
-            except Exception as e:
-                print(f"Error storing vector for chunk {i}: {str(e)}")
-        
-        return jsonify({
-            "success": True, 
-            "message": "Record processed successfully",
-            "vector_ids": vector_ids,
-            "text_length": len(extracted_text),
-            "chunks_count": len(chunks),
-            "summary": summary
-        })
-        
-    except Exception as e:
-        print(f"Error processing record: {str(e)}")
-        return jsonify({"success": False, "message": str(e)}), 500
-
-@app.route('/query_records', methods=['POST'])
-def query_records():
-    """Get information from medical records based on a specific question."""
-    try:
-        data = request.json
-        question = data.get('question')
-        user_id = data.get('userId')
-        
-        if not question or not user_id:
-            return jsonify({"success": False, "message": "Question and userId are required"}), 400
-        
-        # Search in VectorLake
-        vector_namespace = f"medical_records_{user_id}"
-        
-        try:
-            search_results = vectorlake.search({
-                "query": question,
-                "vector_name": vector_namespace,
-                "limit": 5
-            })
-            results = search_results.get("results", [])
-        except Exception as e:
-            print(f"Error searching vectors: {str(e)}")
-            return jsonify({"success": False, "message": f"Error searching records: {str(e)}"}), 500
-        
-        if not results:
-            return jsonify({
-                "success": True,
-                "answer": "I couldn't find any relevant information in your medical records. Please try a different question or check if you have uploaded records related to this query."
-            })
-            
-        # Combine relevant contexts
-        contexts = []
-        record_info = set()
-        
-        for result in results:
-            text = result.get("vector_document", "")
-            metadata = result.get("metadata", {})
-            
-            title = metadata.get('title', '')
-            record_type = metadata.get('recordType', '')
-            record_date = metadata.get('recordDate', '')
-            
-            record_info.add(f"- {title} ({record_type}) from {record_date}")
-            contexts.append(text)
-        
-        # Create prompt for ModelLake
-        context_text = "\n\n".join(contexts)
-        record_info_text = "\n".join(record_info)
-        
-        prompt = f"""
-        You are a medical assistant helping a patient understand their medical records.
-        Below is information from the patient's medical records:
-
-        {context_text}
-
-        Based only on the information above, please answer this question:
-        "{question}"
-
-        Rules:
-        1. Only use information from the provided medical records
-        2. If the information is not in the records, say so
-        3. Be clear and use patient-friendly language
-        4. Keep the answer concise but informative
-        5. If you're unsure about any details, express that uncertainty
-        6. Do not make assumptions beyond what's in the records
-
-        Referenced medical records:
-        {record_info_text}
-        """
-        
-        # Generate answer with ModelLake
-        response = modellake.complete({
-            "prompt": prompt,
-            "token_size": 2000
-        })
-        
-        answer = response.get("text", "I'm sorry, I couldn't generate a proper response.")
-            
-        return jsonify({
-            "success": True,
-            "answer": answer,
-            "sources": list(record_info)
-        })
-        
-    except Exception as e:
-        print(f"Error querying records: {str(e)}")
-        return jsonify({"success": False, "message": str(e)}), 500
-
-if __name__ == '__main__':
-    app.run(debug=True, port=5000) 
-```
-
-### python_server\__pycache__\gemini_rag.cpython-310.pyc
-```
-o
-    �g(  �                   @   s"  d dl mZmZmZ d dlmZ d dlZd dlZd dlm	Z
- d dlZee�Zee� ej�dd�Ze
-jed� e
-�d�ZeZi Zdd	� Zd
-d� Zd&dd�Zd'dd�Zejddgd�dd� �Zejddgd�dd� �Zejddgd�dd� �Zejddgd�d d!� �Zed"kr�ej d#d$d%� dS dS )(�    )�Flask�request�jsonify)�CORSN�GEMINI_API_KEYz'AIzaSyBpwbZVpuwYwKA_F3A-bEEhvTHYjoTUIgE)�api_keyzgemini-1.5-flashc           	   
-   C   s�   z:d| � d�}t �|�}|j�d�}t�d�}t|dd� �D ]
-\}}d||d < qtj�|�}|dkr8|| }|W S  t	yZ } zt
-dt|�� �� t�d�W  Y d}~S d}~ww )	z7Generate pseudo-embedding using Gemini model responses.z�
-        Extract 20 key medical terms or concepts from the following text, separated by commas.
-        If there are fewer than 20 terms, just extract what's available.
-        TEXT: �	
-        �,�d   N�   r   zError generating embedding: )�generation_model�generate_content�text�split�np�zeros�	enumerate�linalg�norm�	Exception�print�str)	r   �prompt�result�terms�terms_vector�i�termr   �e� r   �</home/ayush/Desktop/TinkHack-2.0/python_server/gemini_rag.py�generate_embedding   s$   �
-
-��r!   c                 C   s$   t �| |�t j�| �t j�|�  S )z0Calculate cosine similarity between two vectors.)r   �dotr   r   )�a�br   r   r    �cosine_similarity4   s   $r%   ��  ��   c                 C   sH   g }t dt| �|| �D ]}| ||| � }t|�dkr!|�|� q|S )z$Split text into chunks with overlap.r   r
-   )�range�len�append)r   �
-chunk_size�overlap�chunksr   �chunkr   r   r    �
-chunk_text8   s   
-�r/   �   c           	      C   s�   | t vst |  s
-g S g }t |  D ]}|�d�du rqt||d �}|�||f� q|jddd� d� g }t� }|dd� D ],\}}|d d	 }||v rLq=|�|� |�|d
- |d t|�d�� t|�|kri |S q=|S )zSearch for relevant chunks.�	embeddingNTc                 S   s   | d S )Nr   r   )�xr   r   r    �<lambda>N   s    zsearch_chunks.<locals>.<lambda>)�reverse�key�
-   �metadata�recordIdr   )r   r7   �score)	�	chunks_db�getr%   r*   �sort�set�add�floatr)   )	�user_id�query_embedding�limit�resultsr.   r9   �top_results�seen_records�	record_idr   r   r    �search_chunksA   s4   
-��rG   z/process_record�POST)�methodsc               
-   C   s�  z�t �tj�d��} tj�d�}|stddd��dfW S | �dd�}| �d	d�}|� d
-|� �}d|� d�}t�|�}|j	}| �d	d�| �dd�| �dd�| �dd�| �dd�| �dd�|d�}|	|�}
-g }| �d�}|t
-vrrg t
-|< t|
-�D ].\}}	| �d�� d|� �}t|	�}||	|i |�|t|
-�d��d�}t
-| �|� |�|� qvtd|� d|� dt|
-�� �� tdd|t|�t|
-�|d��W S  ty� } ztdt|�� �� tdt|�d��dfW  Y d}~S d}~ww )z.Process a medical record and store embeddings.�record_data�fileFzNo file provided��success�message�  �description� �titlez. zJ
-        Please provide a brief medical summary of the following:
-        z�
-        
-        Focus on key medical details, diagnoses, treatments, and important values.
-        Keep it under 200 words.
-        �
-recordType�
-recordDate�userIdr8   )rR   rP   rS   rT   rU   r8   �textSummary�_chunk_)�chunk_index�total_chunks)�idr   r1   r7   zProcessed record: z, user: z
-, chunks: TzRecord processed successfully)rM   rN   �	chunk_ids�text_length�chunks_count�summaryzError processing record: ��  N)�json�loadsr   �formr;   �filesr   r   r   r   r:   r   r!   r)   r*   r   r   r   )rJ   rK   rP   rR   �extracted_text�summary_prompt�summary_responser^   r7   r/   r-   r[   r@   r   �chunk_idr1   �
-chunk_datar   r   r   r    �process_recorde   sn   �
-
-
-
-
-
-
-�
-���
-�	"��ri   z/query_recordsc               
-   C   sn  z�t j} | �d�}| �d�}|r|stddd��dfW S t|�}t||dd�}|s1td	d
-d��W S g }t� }|D ]/}|d }|d }	|	�dd�}
-|	�dd�}|	�dd�}|�d|
-� d|� d|� �� |�|� q8d�	|�}d�	|�}d|� d|� d|� d�}t
-�|�}|j}td	|t|�d��W S  ty� } ztdt|�� �� tdt|�d��dfW  Y d}~S d}~ww )zBGet information from medical records based on a specific question.�questionrU   Fz Question and userId are requiredrL   rO   r0   )rB   Tz�I couldn't find any relevant information in your medical records. Please try a different question or check if you have uploaded records related to this query.)rM   �answerr   r7   rR   rQ   rS   rT   z- z (z) from z
-
-�
-z�
-        You are a medical assistant helping a patient understand their medical records.
-        Below is information from the patient's medical records:
-
-        zU
-
-        Based only on the information above, please answer this question:
-        "a�  "
-
-        Rules:
-        1. Only use information from the provided medical records
-        2. If the information is not in the records, say so
-        3. Be clear and use patient-friendly language
-        4. Keep the answer concise but informative
-        5. If you're unsure about any details, express that uncertainty
-        6. Do not make assumptions beyond what's in the records
-
-        Referenced medical records:
-        r   )rM   rk   �sourceszError querying records: r_   N)r   r`   r;   r   r!   rG   r=   r>   r*   �joinr   r   r   �listr   r   r   )�datarj   r@   rA   rC   �contexts�record_infor   r   r7   rR   �record_type�record_date�context_text�record_info_textr   �responserk   r   r   r   r    �query_records�   sX   
-
-
-�
-
-���
-
-�"��rx   z/debug/chunks�GETc               
-   C   s�   z"i } t �� D ]\}}t|�|r|d ndd�| |< qtd| d��W S  tyH } ztdt|�� �� tdt|�d��d	fW  Y d}~S d}~ww )
-z"Debug endpoint to check chunks_db.r   N)�chunk_count�sampleT)rM   rp   zError debugging chunks: FrL   r_   )r:   �itemsr)   r   r   r   r   )r   r@   r-   r   r   r   r    �debug_chunks	  s   �
-�"��r}   z/debug/add_sample_datac               
-   C   sj   zddl m}  | � }t|�W S  ty4 } ztdt|�� �� tdt|�d��dfW  Y d}~S d}~ww )z+Add sample medical record data for testing.r   )�add_sample_datazError adding sample data: FrL   r_   N)�test_add_datar~   r   r   r   r   )r~   r   r   r   r   r    �add_sample_data_route  s   
-"��r�   �__main__Ti�  )�debug�port)r&   r'   )r0   )!�flaskr   r   r   �
-flask_corsr   �osr`   �google.generativeai�generativeai�genai�numpyr   �__name__�app�environr;   r   �	configure�GenerativeModelr   �embedding_modelr:   r!   r%   r/   rG   �routeri   rx   r}   r�   �runr   r   r   r    �<module>   s8    
-
-
-	$
-V
-L
-
-
-�
-```
-
-### python_server\__pycache__\test_add_data.cpython-310.pyc
-```
-o
-    ��g�  �                   @   s>   d dl mZmZmZmZ d dlZdd� Zedkre�  dS dS )�    )�app�generate_embedding�
-chunk_text�	chunks_dbNc               	   C   s6  d} dddddd�dd	d
-ddd�dddddd�g}| t vr!g t | < d}|D ]V}|d � d|d � �}t|�}|t|�7 }|d |d |d |d |d d�}t|�D ](\}}|d � d|� �}	t|�}
-|	||
-i |�|t|�d��d�}t |  �|� qRq%tdt|�� d|� d| � �� ddt|�� d|� d| � �d �S )!N�	123456789�sample_record_1zAnnual Physical Examinationa:  Patient is a 45-year-old male in good health. Blood pressure: 120/80 mmHg. Heart rate: 72 bpm. Currently taking Lisinopril 10mg daily for hypertension and Metformin 500mg twice daily for type 2 diabetes. Lab results show normal kidney function, cholesterol within normal limits. Recommended follow-up in 12 months.zPhysical Examinationz
-2023-03-15)�recordId�title�description�
-recordType�
-recordDate�sample_record_2zCardiology Consultationa<  Patient referred for evaluation of chest pain. ECG shows normal sinus rhythm. Stress test was negative for ischemia. Echo shows normal ejection fraction of 60%. Recommended to continue current medications: Aspirin 81mg daily and Atorvastatin 20mg at bedtime. Advised to exercise regularly and follow a low-salt diet.zSpecialist Consultationz
-2023-05-20�sample_record_3zLab Resultsa4  Complete Blood Count: WBC 6.5, RBC 4.8, Hemoglobin 14.2, Hematocrit 42%, Platelets 250. Comprehensive Metabolic Panel: Sodium 140, Potassium 4.2, Glucose 110 (slightly elevated), A1C 6.4%. Lipid Panel: Total Cholesterol 185, LDL 110, HDL 45, Triglycerides 150. Thyroid Function: TSH 2.8, within normal range.z
-Lab Reportz
-2023-06-10r   r	   z. r
-   r   r   r   �_chunk_)�chunk_index�total_chunks)�id�text�	embedding�metadatazAdded z sample records with z chunks for user T)�success�message)r   r   �len�	enumerater   �append�print)�user_id�sample_recordsr   �record�	full_text�chunksr   �i�chunk_text_content�chunk_idr   �
-chunk_data� r%   �?/home/ayush/Desktop/TinkHack-2.0/python_server/test_add_data.py�add_sample_data   sd   �����	���� r'   �__main__)�
-gemini_ragr   r   r   r   �jsonr'   �__name__r%   r%   r%   r&   �<module>   s    L
-�
-```
-
-### README.md
-```
-# Healthcare Platform
-
-A comprehensive healthcare platform that connects patients with navigators and caregivers, facilitating medical record management and health risk assessments.
-
-## Features
-
-### Patient Features:
-
-- **Dashboard**: View health risk assessment, upcoming appointments, and care team information
-- **Medical Records**: Upload, view, update, and delete medical records
-  - Filter by record type
-  - Search functionality using AI-powered semantic search
-- **Baseline Health Screening**: Complete comprehensive health assessment
-  - AI-powered risk stratification using Google's Gemini 1.5 Flash
-  - Analysis of medication history, personal health history, family history, and social determinants of health
-
-### Navigator & Caregiver Features
-
-- **Dashboard**: View assigned patients and relevant information
-
-## Technology Stack:
-
-- **Frontend**: HTML, CSS, JavaScript, EJS templating, Bootstrap 5
-- **Backend**: Node.js, Express.js
-- **Database**: MongoDB with Mongoose
-- **Authentication**: Passport.js
-- **File Storage**: Cloudinary for medical record file storage
-- **AI Integration**: Google Gemini 1.5 Flash for health risk assessment and record search
-
-## Getting Started
-
-### Prerequisites
-
-- Node.js (v14+)
-- MongoDB
-- Cloudinary account
-- Google AI API key for Gemini
-
-### Installation
-
-1. Clone the repository
-
-   ```
-   git clone https://github.com/yourusername/healthcare-platform.git
-   cd healthcare-platform
-   ```
-
-2. Install dependencies
-
-   ```
-   npm install
-   ```
-
-3. Set up environment variables
-   Copy `.env.example` to `.env` and fill in your details:
-
-   ```
-   PORT=3000
-   MONGODB_URI=mongodb://localhost:27017/healthcare
-   SESSION_SECRET=your_session_secret
-
-   # Cloudinary Configuration
-   CLOUDINARY_CLOUD_NAME=your_cloud_name
-   CLOUDINARY_API_KEY=your_api_key
-   CLOUDINARY_API_SECRET=your_api_secret
-
-   # Google Gemini API
-   GEMINI_API_KEY=your_gemini_api_key
-   ```
-
-4. Start the application
-
-   ```
-   npm start
-   ```
-
-5. Visit `http://localhost:3000` in your browser
-
-## Project Structure
-
-```
-├── config/             # Configuration files
-├── middleware/         # Express middleware
-├── models/             # Mongoose models
-├── public/             # Static assets
-├── routes/             # Express routes
-├── utils/              # Utility functions
-├── views/              # EJS templates
-│   ├── pages/          # Page templates
-│   └── partials/       # Reusable template parts
-├── .env                # Environment variables
-├── app.js              # Application entry point
-└── package.json        # Project metadata
-```
-
-## Key Features Explained
-
-### Baseline Health Screening
-
-The baseline screening feature collects comprehensive health information from patients including:
-
-1. **Medication & Drug History**
-
-   - Current medications
-   - Medication allergies
-   - Recreational drug use
-
-2. **Personal Health History**
-
-   - Chronic conditions
-   - Past surgeries and hospitalizations
-   - Mental health conditions
-
-3. **Family Health History**
-
-   - Predisposition to various conditions
-   - Family medical background
-
-4. **Social Determinants of Health (SDOH)**
-   - Race/ethnicity
-   - Education level
-   - Housing situation
-   - Healthcare access
-   - Employment status
-   - Food security
-   - Transportation access
-   - Social support network
-
-This data is analyzed using Google's Gemini AI to provide a risk assessment categorizing patients into Low, Medium, or High risk levels, along with potential health concerns and recommendations.
-
-### Medical Records Management
-
-- **Upload**: Patients can upload various types of medical records with detailed metadata
-- **Update/Delete**: Full CRUD functionality for managing records
-- **Filter & Search**: AI-powered semantic search helps find relevant records
-- **Security**: All records are securely stored and accessible only to authorized users
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## Acknowledgments
-
-- Bootstrap for UI components
-- Cloudinary for file storage
-- Google for Gemini AI API
-
-```
-
-### utils\gemini.js
-```
-const { GoogleGenerativeAI } = require("@google/generative-ai");
-const MedicalRecord = require("../models/medicalRecord");
-
-// Initialize Gemini API
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-const modelText = genAI.getGenerativeModel({ model: "gemini-pro" });
-const modelEmbedding = genAI.getGenerativeModel({ model: "embedding-001" });
-
-/**
- * Generate embedding vector for text using Gemini
- * @param {string} text - Text to generate embedding for
- * @returns {Array} - Embedding vector
- */
-async function generateEmbedding(text) {
-  try {
-    const result = await modelEmbedding.embedContent(text);
-    const embedding = result.embedding.values;
-    return embedding;
-  } catch (error) {
-    console.error("Error generating embedding:", error);
-    return [];
-  }
-}
-
-/**
- * Calculate cosine similarity between two vectors
- * @param {Array} vecA - First vector
- * @param {Array} vecB - Second vector
- * @returns {number} - Similarity score between 0 and 1
- */
-function cosineSimilarity(vecA, vecB) {
-  let dotProduct = 0;
-  let normA = 0;
-  let normB = 0;
-
-  for (let i = 0; i < vecA.length; i++) {
-    dotProduct += vecA[i] * vecB[i];
-    normA += vecA[i] * vecA[i];
-    normB += vecB[i] * vecB[i];
-  }
-
-  normA = Math.sqrt(normA);
-  normB = Math.sqrt(normB);
-
-  if (normA === 0 || normB === 0) {
-    return 0;
-  }
-
-  return dotProduct / (normA * normB);
-}
-
-/**
- * Search medical records using semantic search
- * @param {string} query - Search query
- * @param {string} userId - User ID
- * @returns {Array} - Search results with scores and explanations
- */
-async function searchRecords(query, userId) {
-  try {
-    // Generate embedding for the query
-    const queryEmbedding = await generateEmbedding(query);
-
-    // Get all records for the user
-    const records = await MedicalRecord.find({
-      patient: userId,
-      vectorEmbedding: { $exists: true, $ne: null },
-    });
-
-    // Calculate similarity scores
-    const scoredRecords = records.map((record) => {
-      const score = cosineSimilarity(queryEmbedding, record.vectorEmbedding);
-      return { record, score };
-    });
-
-    // Sort by similarity and get top results (score > 0.7)
-    const filteredResults = scoredRecords
-      .filter((item) => item.score > 0.7)
-      .sort((a, b) => b.score - a.score);
-
-    // Get explanations for top 5 results
-    const topResults = filteredResults.slice(0, 5);
-
-    if (topResults.length === 0) {
-      // If no high-similarity results, return top 3 records regardless of score
-      return scoredRecords.sort((a, b) => b.score - a.score).slice(0, 3);
-    }
-
-    // Generate explanations for the top results
-    const resultsWithExplanations = await Promise.all(
-      topResults.map(async ({ record, score }) => {
-        try {
-          const prompt = `
-            You are analyzing a medical record that matched a search query.
-            
-            Medical record title: "${record.title}"
-            Medical record description: "${record.description}"
-            Medical record type: "${record.recordType}"
-            
-            Search query: "${query}"
-            
-            In 1-2 sentences, explain why this medical record is relevant to the search query.
-            Be specific and mention any medical terms or concepts that connect the query to the record.
-            Keep your explanation concise and medical-focused.
-          `;
-
-          const result = await modelText.generateContent(prompt);
-          const explanation = result.response.text();
-
-          return {
-            record,
-            score,
-            explanation,
-          };
-        } catch (error) {
-          console.error("Error generating explanation:", error);
-          return { record, score };
-        }
-      })
-    );
-
-    return resultsWithExplanations;
-  } catch (error) {
-    console.error("Error searching records:", error);
-    throw error;
-  }
-}
-
-module.exports = {
-  generateEmbedding,
-  searchRecords,
+	Vector2f getSize();
+	Vector2f getPosition();
+	Vector2f getVelocity();
 };
 
-```
-
-### views\components\footer.html
-```
 
 ```
 
-### views\components\header.html
+### Z-Runner\Enemy.cpp
 ```
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Tailwind Setup</title>
-  <!-- Tailwind CSS via CDN -->
-  <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body>
-  <h1 class="text-3xl font-bold underline">Hello, Tailwind!</h1>
-</body>
-</html>
+#include "Enemy.h"
 
+void Enemy::trueUpdate(float deltaTime, vector<Platform> platforms, vector<Projectile*> projectiles,FloatRect playerBounds,FloatRect ground,PathFinder pathFinder)
+{
+	readyToUpdate = false;
+
+	/*PathFindingNode startNode(0, 900, true);
+	PathFindingNode targetNode(100, 900, true);
+
+	std::vector<PathFindingNode*> path = pathFinder.findPath(startNode,targetNode,enemy.getSize().x,enemy.getSize().y,10,2,10000);
+	for (int i = 0; i < 10; i++) {
+
+		enemy.setPosition(path[i]->x,path[i]->y);
+		cout << enemy.getPosition().x << " x " << enemy.getPosition().x<<endl;
+	}*/
+
+	if (canSeePlayer && !isFalling) {
+		setVelocity(Vector2f(70 * (playerBounds.getPosition().x - self.getPosition().x > 0 ? 1.f : -1.f), velocity.y));
+	}
+
+	isFalling = !self.getGlobalBounds().intersects(ground);
+	for (Platform platform : platforms) {
+		int collidingSide = isCollidingWith(platform.getObject(),true);
+
+		isFalling = isFalling && collidingSide != 0;
+
+		if (collidingSide == 0) continue;
+
+		if (collidingSide == 1) {
+			setVelocity(Vector2f(velocity.x < 0 ? 0 : velocity.x, velocity.y));
+			if(!isFalling) addVelocity(Vector2f(0, -50));
+		}
+		else if (collidingSide == 3) {
+			setVelocity(Vector2f(velocity.x > 0 ? 0 : velocity.x, velocity.y));
+			if (!isFalling) addVelocity(Vector2f(0, -100));
+		}
+		else if (collidingSide == 2 && !platform.ispassThrough) {
+			setVelocity(Vector2f(velocity.x, velocity.y < 0 ? 0 : velocity.y));
+		}
+	}
+
+	for (Projectile* projectile : projectiles) {
+		if (projectile->isHostile) continue;
+
+		if(self.getGlobalBounds().intersects(projectile->getObject().getGlobalBounds()) && !projectile->destroyed) {
+			receiveDamage(projectile->getDamage());
+			projectile->destruct();
+		}
+	}
+
+	if (self.getGlobalBounds().intersects(playerBounds)) {
+		velocity.x = 0;
+	}
+
+	if (isFalling) {
+		addVelocity(Vector2f(0, 50) * deltaTime);
+		setVelocity(Vector2f(0, velocity.y));
+	}
+
+	if (!isFalling && getVelocity().y > 0) {
+		setVelocity(Vector2f(getVelocity().x, 0));
+	}
+
+	Vector2f newPosition = getPosition() + velocity * deltaTime;
+	FloatRect afterMovement(Vector2f(newPosition), getSize());
+	for (Platform platform : platforms) {
+		int collidingSide = isCollidingWith(platform.getObject(), false,FloatRect(newPosition,getSize()));
+
+		if (collidingSide == 1) {
+			newPosition.x = platform.getObject().getSize().x + platform.getObject().getPosition().x;
+		}
+		else if (collidingSide == 3) {
+			newPosition.x = platform.getObject().getPosition().x-getSize().x;
+		}
+		else if (collidingSide == 2 && !platform.ispassThrough) {
+			newPosition.y= platform.getObject().getSize().y + platform.getObject().getPosition().y;
+		}
+		else if (collidingSide == 0) {
+			newPosition.y = platform.getObject().getPosition().y-getSize().y;
+		}
+	}
+
+	updatePosition(getPosition() + velocity * deltaTime);
+
+
+	if (velocity.x != 0) {
+		self.setTexture(*getNextTexture("move"),true);
+		updateSize(size);
+		self.setScale(-self.getScale().x*velocity.x / abs(velocity.x), self.getScale().y);
+	}
+
+	readyToUpdate = true;
+
+}
+
+
+Enemy::Enemy(float width, float x, float y, unordered_map<string, vector<Texture*>> &texture)
+{
+	self.setPosition(x, y);
+
+	this->textures = texture;
+	self.setTexture(*texture["idle"][0]);
+	
+	size = Vector2f(width, width);
+	updateSize(size);
+
+	attackingTimer = nullptr;
+	updateThread = nullptr;
+	attackRate = 2;
+}
+
+int Enemy::attackPlayer()
+{
+	if (!canAttack) return 0;
+	delete attackingTimer;
+	canAttack = false;
+	attackingTimer = new Thread(bind( & Enemy::refreshAttack, this));
+	attackingTimer->launch();
+	return ATTACK_POWER;
+}
+
+void Enemy::update(float deltaTime, vector<Platform> platforms, vector<Projectile*> projectiles, FloatRect playerBounds,FloatRect ground,PathFinder pathFinder)
+{
+	if (died || !readyToUpdate) return;
+	
+	//trueUpdate(deltaTime, platforms, projectiles, playerBounds);
+	delete updateThread;
+	updateThread = new Thread(bind(&Enemy::trueUpdate, this, deltaTime, platforms, projectiles, playerBounds,ground, pathFinder));
+	updateThread->launch();
+}
 ```
 
-### views\components\modal.html
+### Z-Runner\Enemy.h
 ```
+#pragma once
 
-```
+#define ATTACK_POWER 5
 
-### views\components\notification.html
-```
+#include<iostream>
+#include <functional>
 
-```
+#include "Platform.h"
+#include "Projectile.h"
 
-### views\components\sidebar.html
-```
+#include "PathFinder.h"
+#include "PathFindingNode.h"
 
-```
+#include "Character.h"
 
-### views\pages\auth\login.ejs
-```
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>MedConnect - Login</title>
-    <link
-      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
-      rel="stylesheet"
-    />
-    <link
-      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
-      rel="stylesheet"
-    />
-    <!-- Add SweetAlert2 CSS -->
-    <link
-      href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css"
-      rel="stylesheet"
-    />
-    <style>
-      :root {
-        --primary-blue: #2a5c82;
-        --secondary-blue: #5c9baf;
-        --accent-teal: #4ecdc4;
-      }
+class Enemy : public Character
+{
+private:
+	void trueUpdate(float deltaTime, vector<Platform> platforms, vector<Projectile*> projectiles, FloatRect playerBounds, FloatRect ground,PathFinder pathFinder);
+	
+	Thread* updateThread;
 
-      body {
-        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-        min-height: 100vh;
-      }
+	bool readyToUpdate = true;
 
-      .medical-header {
-        background: var(--primary-blue);
-        padding: 1rem;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-      }
+public:
+	bool canSeePlayer = false;
 
-      .form-container {
-        background: rgba(255, 255, 255, 0.95);
-        border-radius: 20px;
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-        transition: transform 0.3s ease;
-        max-width: 500px;
-        margin: 2rem auto;
-      }
+	Enemy(float width, float x, float y, unordered_map<string, vector<Texture*>> &texture);
 
-      .btn-medical {
-        background: var(--accent-teal);
-        color: white;
-        padding: 12px 30px;
-        transition: all 0.3s ease;
-      }
+	int attackPlayer();
 
-      .btn-medical:hover {
-        background: var(--secondary-blue);
-        transform: translateY(-2px);
-      }
+	void update(float deltaTime,vector<Platform> platforms,vector<Projectile*> projectiles, FloatRect playerBounds, FloatRect ground,PathFinder pathFinder);
 
-      .decorative-wave {
-        position: absolute;
-        bottom: 0;
-        left: 0;
-        width: 100%;
-        height: 150px;
-        background: url('data:image/svg+xml;utf8,<svg viewBox="0 0 1440 320" xmlns="http://www.w3.org/2000/svg"><path fill="%232A5C82" fill-opacity="0.1" d="M0,160L48,170.7C96,181,192,203,288,186.7C384,171,480,117,576,101.3C672,85,768,107,864,138.7C960,171,1056,213,1152,208C1248,203,1344,149,1392,122.7L1440,96L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path></svg>');
-      }
-    </style>
-  </head>
-  <body>
-    <nav class="navbar medical-header">
-      <div class="container">
-        <a class="navbar-brand text-white" href="#">
-          <i class="fas fa-hospital me-2"></i>MedConnect
-        </a>
-      </div>
-    </nav>
+};
 
-    <div class="container">
-      <div class="form-container p-5">
-        <h3 class="text-center mb-4">Welcome Back!</h3>
-        <form id="loginForm">
-          <div class="mb-3">
-            <label class="form-label">Username</label>
-            <input type="text" name="username" class="form-control" required />
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Password</label>
-            <input
-              type="password"
-              name="password"
-              class="form-control"
-              required
-            />
-          </div>
-          <div class="mb-3">
-            <label class="form-label">User Type</label>
-            <select class="form-select" name="userType" required>
-              <option value="">Select User Type</option>
-              <option value="Patient">Patient</option>
-              <option value="Patient-Navigator">Patient Navigator</option>
-              <option value="Caregiver">Caregiver</option>
-            </select>
-          </div>
-          <button type="submit" class="btn btn-medical w-100">Login</button>
-          <p class="text-center mt-3">
-            Don't have an account?
-            <a href="/signup" class="text-decoration-none">Create Account</a>
-          </p>
-        </form>
-      </div>
-    </div>
-
-    <div class="decorative-wave"></div>
-
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <!-- Add SweetAlert2 JS -->
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script>
-      $(document).ready(function () {
-        $("#loginForm").submit(function (e) {
-          e.preventDefault();
-
-          const formData = {
-            username: $('input[name="username"]').val(),
-            password: $('input[name="password"]').val(),
-            userType: $('select[name="userType"]').val(),
-          };
-
-          if (!formData.userType) {
-            Swal.fire({
-              icon: "error",
-              title: "Error",
-              text: "Please select a user type",
-            });
-            return;
-          }
-
-          $.ajax({
-            type: "POST",
-            url: "/login",
-            data: formData,
-            success: function (response) {
-              if (response.success) {
-                Swal.fire({
-                  icon: "success",
-                  title: "Success!",
-                  text: "Login successful",
-                  timer: 1500,
-                  showConfirmButton: false,
-                }).then(() => {
-                  window.location.href = response.redirect;
-                });
-              }
-            },
-            error: function (xhr) {
-              const response = xhr.responseJSON;
-              Swal.fire({
-                icon: "error",
-                title: "Login Failed",
-                text: response.message || "An error occurred during login",
-              });
-            },
-          });
-        });
-      });
-    </script>
-  </body>
-</html>
 
 ```
 
-### views\pages\auth\signup.ejs
+### Z-Runner\Game.cpp
 ```
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>MedConnect - Sign Up</title>
-    <link
-      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
-      rel="stylesheet"
-    />
-    <link
-      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
-      rel="stylesheet"
-    />
-    <style>
-      /* Same styles as login.html */
-      :root {
-        --primary-blue: #2a5c82;
-        --secondary-blue: #5c9baf;
-        --accent-teal: #4ecdc4;
-      }
-
-      body {
-        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-        min-height: 100vh;
-      }
-
-      .medical-header {
-        background: var(--primary-blue);
-        padding: 1rem;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-      }
-
-      .form-container {
-        background: rgba(255, 255, 255, 0.95);
-        border-radius: 20px;
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-        transition: transform 0.3s ease;
-        max-width: 800px;
-        margin: 2rem auto;
-      }
-
-      .btn-medical {
-        background: var(--accent-teal);
-        color: white;
-        padding: 12px 30px;
-        transition: all 0.3s ease;
-      }
-
-      .btn-medical:hover {
-        background: var(--secondary-blue);
-        transform: translateY(-2px);
-      }
-
-      .decorative-wave {
-        position: absolute;
-        bottom: 0;
-        left: 0;
-        width: 100%;
-        height: 150px;
-        background: url('data:image/svg+xml;utf8,<svg viewBox="0 0 1440 320" xmlns="http://www.w3.org/2000/svg"><path fill="%232A5C82" fill-opacity="0.1" d="M0,160L48,170.7C96,181,192,203,288,186.7C384,171,480,117,576,101.3C672,85,768,107,864,138.7C960,171,1056,213,1152,208C1248,203,1344,149,1392,122.7L1440,96L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path></svg>');
-      }
-    </style>
-  </head>
-  <body>
-    <nav class="navbar medical-header">
-      <div class="container">
-        <a class="navbar-brand text-white" href="#">
-          <i class="fas fa-hospital me-2"></i>MedConnect
-        </a>
-      </div>
-    </nav>
-
-    <div class="container">
-      <div class="form-container p-5">
-        <h3 class="text-center mb-4">Create New Account</h3>
-        <form id="signupForm" action="/signup" method="POST">
-          <div class="row">
-            <div class="col-md-6 mb-3">
-              <label class="form-label">Full Name</label>
-              <input
-                type="text"
-                name="fullName"
-                class="form-control"
-                required
-              />
-            </div>
-            <div class="col-md-6 mb-3">
-              <label class="form-label">Email</label>
-              <input type="email" name="email" class="form-control" required />
-            </div>
-          </div>
-
-          <div class="row">
-            <div class="col-md-4 mb-3">
-              <label class="form-label">Age</label>
-              <input type="number" name="age" class="form-control" required />
-            </div>
-            <div class="col-md-4 mb-3">
-              <label class="form-label">Phone</label>
-              <input type="tel" name="phone" class="form-control" required />
-            </div>
-            <div class="col-md-4 mb-3">
-              <label class="form-label">Sex</label>
-              <div class="d-flex gap-3">
-                <div class="form-check">
-                  <input
-                    class="form-check-input"
-                    type="radio"
-                    name="sex"
-                    value="Male"
-                    id="male"
-                    required
-                  />
-                  <label class="form-check-label" for="male">Male</label>
-                </div>
-                <div class="form-check">
-                  <input
-                    class="form-check-input"
-                    type="radio"
-                    name="sex"
-                    value="Female"
-                    id="female"
-                  />
-                  <label class="form-check-label" for="female">Female</label>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="mb-3">
-            <label class="form-label">Address</label>
-            <textarea
-              name="address"
-              class="form-control"
-              rows="2"
-              required
-            ></textarea>
-          </div>
-
-          <div class="row">
-            <div class="col-md-6 mb-3">
-              <label class="form-label">Username</label>
-              <input
-                type="text"
-                name="username"
-                class="form-control"
-                required
-              />
-            </div>
-            <div class="col-md-6 mb-3">
-              <label class="form-label">Password</label>
-              <input
-                type="password"
-                name="password"
-                class="form-control"
-                required
-              />
-            </div>
-          </div>
-
-          <div class="mb-4">
-            <label class="form-label">User Type</label>
-            <select class="form-select" name="userType" required>
-              <option value="Patient">Patient</option>
-              <option value="Patient-Navigator">Patient Navigator</option>
-              <option value="Caregiver">Caregiver</option>
-            </select>
-          </div>
-
-          <button type="submit" class="btn btn-medical w-100">
-            Create Account
-          </button>
-          <p class="text-center mt-3">
-            Already have an account?
-            <a href="/login" class="text-decoration-none">Login Here</a>
-          </p>
-        </form>
-      </div>
-    </div>
-
-    <div class="decorative-wave"></div>
-
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <!-- Add SweetAlert2 JS -->
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script>
-      $(document).ready(function () {
-        $("#signupForm").submit(function (e) {
-          e.preventDefault();
-
-          const formData = {
-            username: $('input[name="username"]').val(),
-            password: $('input[name="password"]').val(),
-            fullName: $('input[name="fullName"]').val(),
-            email: $('input[name="email"]').val(),
-            age: $('input[name="age"]').val(),
-            phone: $('input[name="phone"]').val(),
-            sex: $('input[name="sex"]:checked').val(),
-            address: $('textarea[name="address"]').val(),
-            userType: $('select[name="userType"]').val(),
-          };
-
-          // Basic validation
-          if (!formData.sex) {
-            Swal.fire({
-              icon: "error",
-              title: "Error",
-              text: "Please select your sex",
-            });
-            return;
-          }
-
-          if (!formData.userType) {
-            Swal.fire({
-              icon: "error",
-              title: "Error",
-              text: "Please select a user type",
-            });
-            return;
-          }
-
-          $.ajax({
-            type: "POST",
-            url: "/signup",
-            data: formData,
-            success: function (response) {
-              if (response.success) {
-                Swal.fire({
-                  icon: "success",
-                  title: "Success!",
-                  text: response.message,
-                  timer: 1500,
-                  showConfirmButton: false,
-                }).then(() => {
-                  window.location.href = response.redirect;
-                });
-              }
-            },
-            error: function (xhr) {
-              const response = xhr.responseJSON;
-              Swal.fire({
-                icon: "error",
-                title: "Registration Failed",
-                text:
-                  response.message || "An error occurred during registration",
-              });
-            },
-          });
-        });
-      });
-    </script>
-  </body>
-</html>
-
-```
-
-### views\pages\caregiver\appointment-management.ejs
-```
-
-```
-
-### views\pages\caregiver\dashboard.ejs
-```
-
-```
-
-### views\pages\caregiver\feedback-management.ejs
-```
-
-```
-
-### views\pages\caregiver\patient-info.ejs
-```
-
-```
-
-### views\pages\caregiver\progress-reports.ejs
-```
-
-```
-
-### views\pages\navigator\appointment-management.ejs
-```
-
-```
-
-### views\pages\navigator\care-plan.ejs
-```
-
-```
-
-### views\pages\navigator\dashboard.ejs
-```
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Patient Navigator Dashboard - MedConnect</title>
-    <link
-      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
-      rel="stylesheet"
-    />
-    <link
-      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
-      rel="stylesheet"
-    />
-    <style>
-      :root {
-        --primary-blue: #2a5c82;
-        --secondary-blue: #5c9baf;
-        --accent-teal: #4ecdc4;
-      }
-
-      .dashboard-header {
-        background: var(--primary-blue);
-        color: white;
-      }
-
-      .sidebar {
-        background: #f8f9fa;
-        min-height: calc(100vh - 60px);
-        border-right: 1px solid #dee2e6;
-      }
-
-      .nav-link {
-        color: #333;
-        padding: 0.8rem 1rem;
-        border-radius: 0.25rem;
-        margin: 0.2rem 0;
-      }
-
-      .nav-link:hover {
-        background: var(--accent-teal);
-        color: white;
-      }
-
-      .welcome-card {
-        background: linear-gradient(
-          135deg,
-          var(--secondary-blue) 0%,
-          var(--accent-teal) 100%
-        );
-        color: white;
-      }
-    </style>
-  </head>
-  <body>
-    <header class="dashboard-header py-3">
-      <div class="container-fluid">
-        <div class="d-flex justify-content-between align-items-center">
-          <div class="d-flex align-items-center">
-            <i class="fas fa-hospital me-2"></i>
-            <h4 class="mb-0">MedConnect</h4>
-          </div>
-          <div class="d-flex align-items-center">
-            <span class="me-3">Welcome, <%= user.fullName %></span>
-            <a href="/logout" class="btn btn-outline-light btn-sm">Logout</a>
-          </div>
-        </div>
-      </div>
-    </header>
-
-    <div class="container-fluid">
-      <div class="row">
-        <div class="col-md-3 col-lg-2 sidebar py-3">
-          <div class="nav flex-column">
-            <a href="#" class="nav-link active">
-              <i class="fas fa-home me-2"></i> Dashboard
-            </a>
-            <a href="#" class="nav-link">
-              <i class="fas fa-users me-2"></i> My Patients
-            </a>
-            <a href="#" class="nav-link">
-              <i class="fas fa-calendar me-2"></i> Appointments
-            </a>
-            <a href="#" class="nav-link">
-              <i class="fas fa-chart-line me-2"></i> Patient Progress
-            </a>
-            <a href="#" class="nav-link">
-              <i class="fas fa-comments me-2"></i> Messages
-            </a>
-            <a href="#" class="nav-link">
-              <i class="fas fa-file-medical me-2"></i> Resources
-            </a>
-          </div>
-        </div>
-
-        <main class="col-md-9 col-lg-10 py-3">
-          <div class="welcome-card p-4 rounded mb-4">
-            <h2>Welcome to Your Patient Navigator Dashboard</h2>
-            <p class="mb-0">
-              Monitor patient progress, manage appointments, and coordinate care
-              services.
-            </p>
-          </div>
-
-          <div class="row">
-            <div class="col-md-6 col-lg-4 mb-4">
-              <div class="card h-100">
-                <div class="card-body">
-                  <h5 class="card-title">
-                    <i class="fas fa-users text-primary me-2"></i>
-                    Active Patients
-                  </h5>
-                  <p class="card-text">
-                    You currently have no active patients.
-                  </p>
-                  <a href="#" class="btn btn-sm btn-outline-primary"
-                    >View Patients</a
-                  >
-                </div>
-              </div>
-            </div>
-
-            <div class="col-md-6 col-lg-4 mb-4">
-              <div class="card h-100">
-                <div class="card-body">
-                  <h5 class="card-title">
-                    <i class="fas fa-calendar text-success me-2"></i>
-                    Today's Appointments
-                  </h5>
-                  <p class="card-text">No appointments scheduled for today.</p>
-                  <a href="#" class="btn btn-sm btn-outline-success"
-                    >Manage Appointments</a
-                  >
-                </div>
-              </div>
-            </div>
-
-            <div class="col-md-6 col-lg-4 mb-4">
-              <div class="card h-100">
-                <div class="card-body">
-                  <h5 class="card-title">
-                    <i class="fas fa-comments text-info me-2"></i>
-                    Messages
-                  </h5>
-                  <p class="card-text">You have no unread messages.</p>
-                  <a href="#" class="btn btn-sm btn-outline-info"
-                    >Open Messages</a
-                  >
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="row">
-            <div class="col-12">
-              <div class="card">
-                <div class="card-body">
-                  <h5 class="card-title">
-                    <i class="fas fa-tasks text-warning me-2"></i>
-                    Recent Activities
-                  </h5>
-                  <p class="card-text">No recent activities to display.</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </main>
-      </div>
-    </div>
-
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-  </body>
-</html>
-
-```
-
-### views\pages\navigator\learning.ejs
-```
-
-```
-
-### views\pages\navigator\patient-management.ejs
-```
-
-```
-
-### views\pages\navigator\progress-tracking.ejs
-```
-
-```
-
-### views\pages\navigator\resources.ejs
-```
-
-```
-
-### views\pages\patient\appointments.ejs
-```
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Appointments - MedConnect</title>
-    <link
-      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
-      rel="stylesheet"
-    />
-    <link
-      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
-      rel="stylesheet"
-    />
-    <style>
-      :root {
-        --primary-blue: #2a5c82;
-        --secondary-blue: #5c9baf;
-        --accent-teal: #4ecdc4;
-      }
-
-      .dashboard-header {
-        background: var(--primary-blue);
-        color: white;
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        z-index: 1030;
-        height: 60px;
-      }
-
-      .sidebar {
-        background: #f8f9fa;
-        position: fixed;
-        left: 0;
-        top: 60px;
-        bottom: 0;
-        width: 250px;
-        border-right: 1px solid #dee2e6;
-        overflow-y: auto;
-        z-index: 1020;
-        padding: 20px 0;
-      }
-
-      .main-content {
-        margin-left: 250px;
-        margin-top: 60px;
-        padding: 30px;
-        min-height: calc(100vh - 60px);
-      }
-
-      .nav-link {
-        color: #333;
-        padding: 0.8rem 1.5rem;
-        margin: 0.2rem 1rem;
-        border-radius: 8px;
-        transition: all 0.3s ease;
-      }
-
-      .nav-link:hover {
-        background: var(--accent-teal);
-        color: white !important;
-      }
-
-      .nav-link.active {
-        background: var(--primary-blue);
-        color: white !important;
-      }
-
-      .card {
-        border: none;
-        border-radius: 15px;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        transition: transform 0.3s ease;
-        margin-bottom: 20px;
-      }
-
-      .card:hover {
-        transform: translateY(-5px);
-      }
-    </style>
-  </head>
-  <body>
-    <!-- Fixed Header -->
-    <header class="dashboard-header py-2">
-      <div class="container-fluid">
-        <div class="d-flex justify-content-between align-items-center">
-          <div class="d-flex align-items-center">
-            <i class="fas fa-hospital me-3 fs-4"></i>
-            <h4 class="mb-0">MedConnect</h4>
-          </div>
-          <div class="d-flex align-items-center">
-            <span class="me-3">Welcome, <%= user.fullName %></span>
-            <a href="/logout" class="btn btn-outline-light btn-sm">Logout</a>
-          </div>
-        </div>
-      </div>
-    </header>
-
-    <!-- Fixed Sidebar -->
-    <div class="sidebar">
-      <nav class="nav flex-column">
-        <a
-          href="/patient/dashboard"
-          class="nav-link <%= locals.path === '/patient/dashboard' ? 'active' : '' %>"
-        >
-          <i class="fas fa-home me-2"></i> Dashboard
-        </a>
-        <a
-          href="/patient/appointments"
-          class="nav-link <%= locals.path === '/patient/appointments' ? 'active' : '' %>"
-        >
-          <i class="fas fa-calendar me-2"></i> Appointments
-        </a>
-        <a
-          href="/patient/medical-records"
-          class="nav-link <%= locals.path === '/patient/medical-records' ? 'active' : '' %>"
-        >
-          <i class="fas fa-file-medical me-2"></i> Medical Records
-        </a>
-        <a
-          href="/baseline-screening"
-          class="nav-link <%= locals.path === '/patient/baseline-screening' ? 'active' : '' %>"
-        >
-          <i class="fas fa-clipboard-check me-2"></i> Health Screening
-        </a>
-        <a
-          href="#"
-          class="nav-link <%= locals.path === '/patient/messages' ? 'active' : '' %>"
-        >
-          <i class="fas fa-comments me-2"></i> Messages
-        </a>
-        <a
-          href="#"
-          class="nav-link <%= locals.path === '/patient/navigator' ? 'active' : '' %>"
-        >
-          <i class="fas fa-user-md me-2"></i> My Navigator
-        </a>
-      </nav>
-    </div>
-
-    <!-- Main Content -->
-    <main class="main-content">
-      <div class="container-fluid p-0">
-        <div class="row mb-4">
-          <div class="col-12">
-            <h2 class="mb-3">My Appointments</h2>
-            <p class="text-muted">
-              Manage your upcoming and past appointments with healthcare
-              providers
-            </p>
-          </div>
-        </div>
-
-        <div class="row mb-4">
-          <div class="col-12">
-            <div class="card">
-              <div class="card-body p-4">
-                <h5 class="card-title mb-4">Schedule New Appointment</h5>
-                <div class="row">
-                  <!-- Appointment Scheduling Form Placeholder -->
-                  <div class="alert alert-info">
-                    <i class="fas fa-info-circle me-2"></i>
-                    Appointment scheduling is coming soon.
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </main>
-
-    <!-- Bootstrap Bundle with Popper -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
-    <!-- Chatbot CSS and JavaScript -->
-    <link href="/css/chatbot-styles.css" rel="stylesheet" />
-    <script src="/js/chatbot.js"></script>
-  </body>
-</html>
-
-```
-
-### views\pages\patient\baseline-screening.ejs
-```
-<%- include('../../partials/header') %>
-
-<div class="progress-bar-container mb-4">
-  <div class="progress" style="height: 8px">
-    <div
-      class="progress-bar progress-bar-striped progress-bar-animated"
-      role="progressbar"
-      style="width: 0%"
-    ></div>
-  </div>
-  <div class="d-flex justify-content-between mt-2">
-    <small class="text-muted">Progress</small>
-    <small class="text-primary fw-bold"
-      ><span id="progressPercentage">0</span>% Complete</small
-    >
-  </div>
-</div>
-
-<div class="row justify-content-center">
-  <div class="col-lg-8">
-    <div class="card">
-      <div class="card-body">
-        <h4 class="card-title mb-4">Baseline Health Screening</h4>
-        <p class="text-muted mb-4">
-          This confidential assessment helps us understand your health
-          background and risks. Your honest responses will help us provide
-          better personalized care.
-        </p>
-
-        <form id="screeningForm">
-          <!-- Drug and Medication History -->
-          <div class="screening-section mb-5">
-            <h5 class="section-title">
-              <i class="fas fa-pills text-primary me-2"></i>
-              Medication & Drug History
-            </h5>
-
-            <div class="mb-3">
-              <label class="form-label">Current Medications</label>
-              <div class="tag-input-container">
-                <input
-                  type="text"
-                  id="medicationInput"
-                  class="form-control"
-                  placeholder="Type medication name and press Enter"
-                />
-                <div
-                  id="currentMedicationTags"
-                  class="tag-container mt-2"
-                ></div>
-                <input
-                  type="hidden"
-                  id="currentMedications"
-                  name="currentMedications"
-                />
-              </div>
-              <small class="text-muted"
-                >Include prescription and over-the-counter medications</small
-              >
-            </div>
-
-            <div class="mb-3">
-              <label class="form-label">Medication Allergies</label>
-              <div class="tag-input-container">
-                <input
-                  type="text"
-                  id="allergyInput"
-                  class="form-control"
-                  placeholder="Type allergy and press Enter"
-                />
-                <div
-                  id="medicationAllergyTags"
-                  class="tag-container mt-2"
-                ></div>
-                <input
-                  type="hidden"
-                  id="medicationAllergies"
-                  name="medicationAllergies"
-                />
-              </div>
-            </div>
-
-            <div class="mb-3">
-              <label class="form-label">Recreational Drug Use</label>
-              <select class="form-select" name="recreationalDrugUse">
-                <option value="Never">Never</option>
-                <option value="Former">Former</option>
-                <option value="Current">Current</option>
-                <option value="Prefer not to say">Prefer not to say</option>
-              </select>
-            </div>
-          </div>
-
-          <!-- Disease History -->
-          <div class="screening-section mb-5">
-            <h5 class="section-title">
-              <i class="fas fa-heartbeat text-danger me-2"></i>
-              Personal Health History
-            </h5>
-
-            <div class="mb-3">
-              <label class="form-label">Chronic Conditions</label>
-              <div class="tag-input-container">
-                <input
-                  type="text"
-                  id="conditionInput"
-                  class="form-control"
-                  placeholder="Type condition and press Enter"
-                />
-                <div id="chronicConditionTags" class="tag-container mt-2"></div>
-                <input
-                  type="hidden"
-                  id="chronicConditions"
-                  name="chronicConditions"
-                />
-              </div>
-              <small class="text-muted"
-                >E.g., diabetes, hypertension, asthma</small
-              >
-            </div>
-
-            <div class="mb-3">
-              <label class="form-label"
-                >Past Surgeries or Hospitalizations</label
-              >
-              <div class="tag-input-container">
-                <input
-                  type="text"
-                  id="surgeryInput"
-                  class="form-control"
-                  placeholder="Type surgery/hospitalization and press Enter"
-                />
-                <div id="pastSurgeryTags" class="tag-container mt-2"></div>
-                <input type="hidden" id="pastSurgeries" name="pastSurgeries" />
-              </div>
-              <small class="text-muted"
-                >Include year if possible (e.g., Appendectomy 2018)</small
-              >
-            </div>
-
-            <div class="mb-3">
-              <label class="form-label">Mental Health Conditions</label>
-              <div class="tag-input-container">
-                <input
-                  type="text"
-                  id="mentalHealthInput"
-                  class="form-control"
-                  placeholder="Type condition and press Enter"
-                />
-                <div id="mentalHealthTags" class="tag-container mt-2"></div>
-                <input
-                  type="hidden"
-                  id="mentalHealthConditions"
-                  name="mentalHealthConditions"
-                />
-              </div>
-              <small class="text-muted">E.g., depression, anxiety, PTSD</small>
-            </div>
-          </div>
-
-          <!-- Family History -->
-          <div class="screening-section mb-5">
-            <h5 class="section-title">
-              <i class="fas fa-users text-success me-2"></i>
-              Family Health History
-            </h5>
-            <p class="text-muted mb-3">
-              Select conditions that exist in your immediate family (parents,
-              siblings, children)
-            </p>
-
-            <div class="row mb-3">
-              <div class="col-md-6">
-                <div class="form-check mb-2">
-                  <input
-                    class="form-check-input"
-                    type="checkbox"
-                    id="familyCancer"
-                    name="familyHistory.cancer"
-                  />
-                  <label class="form-check-label" for="familyCancer"
-                    >Cancer</label
-                  >
-                </div>
-                <div class="form-check mb-2">
-                  <input
-                    class="form-check-input"
-                    type="checkbox"
-                    id="familyHeartDisease"
-                    name="familyHistory.heartDisease"
-                  />
-                  <label class="form-check-label" for="familyHeartDisease"
-                    >Heart Disease</label
-                  >
-                </div>
-                <div class="form-check mb-2">
-                  <input
-                    class="form-check-input"
-                    type="checkbox"
-                    id="familyDiabetes"
-                    name="familyHistory.diabetes"
-                  />
-                  <label class="form-check-label" for="familyDiabetes"
-                    >Diabetes</label
-                  >
-                </div>
-              </div>
-              <div class="col-md-6">
-                <div class="form-check mb-2">
-                  <input
-                    class="form-check-input"
-                    type="checkbox"
-                    id="familyAutoimmune"
-                    name="familyHistory.autoimmune"
-                  />
-                  <label class="form-check-label" for="familyAutoimmune"
-                    >Autoimmune Disorders</label
-                  >
-                </div>
-                <div class="form-check mb-2">
-                  <input
-                    class="form-check-input"
-                    type="checkbox"
-                    id="familyMentalHealth"
-                    name="familyHistory.mentalHealth"
-                  />
-                  <label class="form-check-label" for="familyMentalHealth"
-                    >Mental Health Conditions</label
-                  >
-                </div>
-              </div>
-            </div>
-
-            <div class="mb-3">
-              <label class="form-label">Other Family Conditions</label>
-              <textarea
-                class="form-control"
-                name="familyHistory.other"
-                rows="2"
-                placeholder="List any other significant family health conditions"
-              ></textarea>
-            </div>
-          </div>
-
-          <!-- Social Determinants of Health -->
-          <div class="screening-section mb-5">
-            <h5 class="section-title">
-              <i class="fas fa-home text-info me-2"></i>
-              Social Determinants of Health
-            </h5>
-            <p class="text-muted mb-3">
-              Your social environment can impact your health. This information
-              helps us provide appropriate support.
-            </p>
-
-            <div class="mb-3">
-              <label class="form-label">Race/Ethnicity</label>
-              <select class="form-select" name="sdoh.race">
-                <option value="">Select...</option>
-                <option value="Asian">Asian</option>
-                <option value="Black/African American">
-                  Black/African American
-                </option>
-                <option value="Hispanic/Latino">Hispanic/Latino</option>
-                <option value="Native American">Native American</option>
-                <option value="Pacific Islander">Pacific Islander</option>
-                <option value="White/Caucasian">White/Caucasian</option>
-                <option value="Multiple">Multiple Races</option>
-                <option value="Other">Other</option>
-                <option value="Prefer not to say">Prefer not to say</option>
-              </select>
-            </div>
-
-            <div class="mb-3">
-              <label class="form-label">Highest Education Level</label>
-              <select class="form-select" name="sdoh.education">
-                <option value="">Select...</option>
-                <option value="Less than high school">
-                  Less than high school
-                </option>
-                <option value="High school/GED">High school/GED</option>
-                <option value="Some college">Some college</option>
-                <option value="Associate's degree">Associate's degree</option>
-                <option value="Bachelor's degree">Bachelor's degree</option>
-                <option value="Graduate degree">Graduate degree</option>
-                <option value="Prefer not to say">Prefer not to say</option>
-              </select>
-            </div>
-
-            <div class="mb-3">
-              <label class="form-label">Housing Situation</label>
-              <select class="form-select" name="sdoh.housing">
-                <option value="">Select...</option>
-                <option value="Own home">Own home</option>
-                <option value="Rent">Rent</option>
-                <option value="Live with family/friends">
-                  Live with family/friends
-                </option>
-                <option value="Supportive housing">Supportive housing</option>
-                <option value="Unstable housing">Unstable housing</option>
-                <option value="Prefer not to say">Prefer not to say</option>
-              </select>
-            </div>
-
-            <div class="mb-3">
-              <label class="form-label">Healthcare Access</label>
-              <select class="form-select" name="sdoh.healthcareAccess">
-                <option value="">Select...</option>
-                <option value="Private insurance">Private insurance</option>
-                <option value="Medicare">Medicare</option>
-                <option value="Medicaid">Medicaid</option>
-                <option value="No insurance">No insurance</option>
-                <option value="Other">Other</option>
-                <option value="Prefer not to say">Prefer not to say</option>
-              </select>
-            </div>
-
-            <div class="mb-3">
-              <label class="form-label">Employment Status</label>
-              <select class="form-select" name="sdoh.employmentStatus">
-                <option value="">Select...</option>
-                <option value="Full-time">Full-time</option>
-                <option value="Part-time">Part-time</option>
-                <option value="Self-employed">Self-employed</option>
-                <option value="Unemployed">Unemployed</option>
-                <option value="Retired">Retired</option>
-                <option value="Student">Student</option>
-                <option value="Unable to work">Unable to work</option>
-                <option value="Prefer not to say">Prefer not to say</option>
-              </select>
-            </div>
-
-            <div class="mb-3">
-              <label class="form-label">Food Security</label>
-              <select class="form-select" name="sdoh.foodSecurity">
-                <option value="">Select...</option>
-                <option value="Always have enough food">
-                  Always have enough food
-                </option>
-                <option value="Sometimes worry about food">
-                  Sometimes worry about food
-                </option>
-                <option value="Often worry about food">
-                  Often worry about food
-                </option>
-                <option value="Prefer not to say">Prefer not to say</option>
-              </select>
-            </div>
-
-            <div class="mb-3">
-              <label class="form-label">Transportation Access</label>
-              <select class="form-select" name="sdoh.transportationAccess">
-                <option value="">Select...</option>
-                <option value="Own vehicle">Own vehicle</option>
-                <option value="Public transportation">
-                  Public transportation
-                </option>
-                <option value="Rely on others">Rely on others</option>
-                <option value="Limited access">Limited access</option>
-                <option value="Prefer not to say">Prefer not to say</option>
-              </select>
-            </div>
-
-            <div class="mb-3">
-              <label class="form-label">Social Support Network</label>
-              <select class="form-select" name="sdoh.socialSupport">
-                <option value="">Select...</option>
-                <option value="Strong support network">
-                  Strong support network
-                </option>
-                <option value="Some support">Some support</option>
-                <option value="Limited support">Limited support</option>
-                <option value="Very isolated">Very isolated</option>
-                <option value="Prefer not to say">Prefer not to say</option>
-              </select>
-            </div>
-          </div>
-
-          <!-- Additional Information -->
-          <div class="screening-section mb-5">
-            <h5 class="section-title">
-              <i class="fas fa-info-circle text-warning me-2"></i>
-              Additional Information
-            </h5>
-
-            <div class="mb-3">
-              <label class="form-label"
-                >Is there anything else you'd like us to know about your
-                health?</label
-              >
-              <textarea
-                class="form-control"
-                name="additionalInfo"
-                rows="3"
-                placeholder="Enter any additional health information here"
-              ></textarea>
-            </div>
-          </div>
-
-          <div class="d-grid gap-2">
-            <button type="submit" class="btn btn-primary btn-lg">
-              <i class="fas fa-check-circle me-2"></i>Submit Screening
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
-</div>
-
-<div id="analysis-result" style="display: none">
-  <div class="card mb-4">
-    <div class="card-body">
-      <h5 class="card-title mb-4">
-        <i class="fas fa-chart-pie text-primary me-2"></i>
-        Health Risk Assessment
-      </h5>
-
-      <div class="alert" id="risk-alert" role="alert">
-        <h6 class="alert-heading mb-2" id="risk-level"></h6>
-        <p class="mb-0" id="risk-explanation"></p>
-      </div>
-
-      <div class="mb-4">
-        <h6>Potential Health Concerns:</h6>
-        <ul id="potential-issues" class="list-group list-group-flush"></ul>
-      </div>
-
-      <div>
-        <h6>Recommended Next Steps:</h6>
-        <div id="recommendations"></div>
-      </div>
-
-      <div class="d-flex justify-content-between mt-4">
-        <button class="btn btn-secondary" id="editBtn">
-          <i class="fas fa-edit me-2"></i>Edit Responses
-        </button>
-        <button class="btn btn-success" id="saveBtn">
-          <i class="fas fa-check me-2"></i>Save to My Records
-        </button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Loading overlay -->
-<div
-  id="loading-overlay"
-  class="position-fixed top-0 start-0 w-100 h-100 d-none"
->
-  <div
-    class="d-flex justify-content-center align-items-center h-100 bg-dark bg-opacity-75"
-  >
-    <div class="text-center text-white">
-      <div
-        class="spinner-border text-light mb-3"
-        role="status"
-        style="width: 3rem; height: 3rem"
-      >
-        <span class="visually-hidden">Loading...</span>
-      </div>
-      <h5 id="loading-text">Analyzing your health data...</h5>
-      <p class="small">This may take a few moments</p>
-    </div>
-  </div>
-</div>
-
-<!-- Success Modal -->
-<div class="modal fade" id="successModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title">Screening Saved</h5>
-        <button
-          type="button"
-          class="btn-close"
-          data-bs-dismiss="modal"
-          aria-label="Close"
-        ></button>
-      </div>
-      <div class="modal-body">
-        <div class="text-center mb-4">
-          <i
-            class="fas fa-check-circle text-success"
-            style="font-size: 4rem"
-          ></i>
-          <h5 class="mt-3">Your baseline screening has been saved</h5>
-          <p class="text-muted">
-            The results are now available on your dashboard
-          </p>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <a href="/patient/dashboard" class="btn btn-primary">
-          Go to Dashboard
-        </a>
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-          Close
-        </button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<style>
-  .screening-section {
-    border: 1px solid #e9ecef;
-    border-radius: 10px;
-    padding: 2rem;
-    margin-bottom: 2rem;
-    background: #fff;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-    transition: all 0.3s ease;
-    opacity: 0;
-    transform: translateY(20px);
-    animation: fadeInUp 0.5s ease forwards;
-  }
-
-  .screening-section:hover {
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-    border-color: #dee2e6;
-  }
-
-  @keyframes fadeInUp {
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
-  .section-title {
-    display: flex;
-    align-items: center;
-    padding: 12px 20px;
-    background: #f8f9fa;
-    border-radius: 8px;
-    margin-bottom: 2rem;
-    transition: all 0.3s ease;
-  }
-
-  .section-title:hover {
-    background: #e9ecef;
-    transform: translateX(5px);
-  }
-
-  .section-title i {
-    font-size: 1.5rem;
-    margin-right: 15px;
-  }
-
-  .form-control,
-  .form-select {
-    border-radius: 8px;
-    transition: all 0.3s ease;
-    max-width: 600px;
-  }
-
-  .form-control:focus,
-  .form-select:focus {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-  }
-
-  .tag {
-    background: #e9ecef;
-    border: none;
-    padding: 8px 16px;
-    border-radius: 20px;
-    transition: all 0.2s ease;
-    cursor: default;
-  }
-
-  .tag:hover {
-    background: #dee2e6;
-    transform: translateY(-2px);
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  }
-
-  #loading-overlay {
-    z-index: 2000;
-  }
-
-  #potential-issues .list-group-item {
-    border-left: none;
-    border-right: none;
-    padding: 0.75rem 0;
-  }
-
-  .issue-item {
-    display: flex;
-    align-items: flex-start;
-  }
-
-  .issue-item i {
-    margin-top: 3px;
-    margin-right: 10px;
-  }
-
-  .progress-bar-container {
-    position: sticky;
-    top: 0;
-    z-index: 1020;
-    background: white;
-    padding: 15px;
-    border-radius: 10px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-  }
-
-  .btn-primary {
-    transition: all 0.3s ease;
-  }
-
-  .btn-primary:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(13, 110, 253, 0.2);
-  }
-</style>
-
-<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.min.js"></script>
-<script>
-  document.addEventListener("DOMContentLoaded", function () {
-    // Tag input functionality
-    const tagInputs = [
-      {
-        inputId: "medicationInput",
-        tagContainerId: "currentMedicationTags",
-        hiddenInputId: "currentMedications",
-      },
-      {
-        inputId: "allergyInput",
-        tagContainerId: "medicationAllergyTags",
-        hiddenInputId: "medicationAllergies",
-      },
-      {
-        inputId: "conditionInput",
-        tagContainerId: "chronicConditionTags",
-        hiddenInputId: "chronicConditions",
-      },
-      {
-        inputId: "surgeryInput",
-        tagContainerId: "pastSurgeryTags",
-        hiddenInputId: "pastSurgeries",
-      },
-      {
-        inputId: "mentalHealthInput",
-        tagContainerId: "mentalHealthTags",
-        hiddenInputId: "mentalHealthConditions",
-      },
-    ];
-
-    // Set up tag inputs
-    tagInputs.forEach(({ inputId, tagContainerId, hiddenInputId }) => {
-      const inputElement = document.getElementById(inputId);
-      const tagContainer = document.getElementById(tagContainerId);
-      const hiddenInput = document.getElementById(hiddenInputId);
-      let tags = [];
-
-      inputElement.addEventListener("keydown", function (e) {
-        if (e.key === "Enter" || e.key === ",") {
-          e.preventDefault();
-          const value = this.value.trim();
-          if (value && !tags.includes(value)) {
-            addTag(value);
-            this.value = "";
-            updateHiddenInput();
-          }
-        }
-      });
-
-      function addTag(text) {
-        tags.push(text);
-        const tag = document.createElement("span");
-        tag.className = "tag";
-        tag.innerHTML = text + ' <span class="remove-tag">&times;</span>';
-        tagContainer.appendChild(tag);
-
-        tag.querySelector(".remove-tag").addEventListener("click", function () {
-          tag.remove();
-          tags = tags.filter((t) => t !== text);
-          updateHiddenInput();
-        });
-      }
-
-      function updateHiddenInput() {
-        hiddenInput.value = JSON.stringify(tags);
-      }
-    });
-
-    // Form submission
-    const screeningForm = document.getElementById("screeningForm");
-    const loadingOverlay = document.getElementById("loading-overlay");
-    const analysisResult = document.getElementById("analysis-result");
-
-    screeningForm.addEventListener("submit", function (e) {
-      e.preventDefault();
-
-      // Show loading overlay
-      loadingOverlay.classList.remove("d-none");
-
-      // Gather form data
-      const formData = new FormData(screeningForm);
-      const jsonData = {};
-
-      // Convert FormData to JSON
-      formData.forEach((value, key) => {
-        // Handle nested properties like familyHistory.cancer
-        if (key.includes(".")) {
-          const [parent, child] = key.split(".");
-          if (!jsonData[parent]) {
-            jsonData[parent] = {};
-          }
-          jsonData[parent][child] = value === "on" ? true : value;
-        } else {
-          // Try to parse JSON strings (for tag inputs)
-          try {
-            if (value.startsWith("[") && value.endsWith("]")) {
-              jsonData[key] = JSON.parse(value);
-            } else {
-              jsonData[key] = value;
+#include "Game.h"
+#include <iostream>
+#include <filesystem>
+
+void Game::initializeVariables()
+{
+	this->window = nullptr;
+
+    //Loading texture
+    path ResFolder = current_path() / "res\\textures\\sprites";
+
+    for (const auto& character : directory_iterator(ResFolder)) {
+        unordered_map<string, vector<Texture*>>* textureGroup = new unordered_map<string, vector<Texture*>>();
+        for (const auto& animation : directory_iterator(character.path())) {
+            vector<Texture*>* textures = new vector<Texture*>();
+            for (const auto& file : directory_iterator(animation.path())) {
+                Texture* texture = new Texture();
+                texture->loadFromFile("res\\textures\\sprites\\"+relative(file,ResFolder).string());
+                textures->push_back(texture);
             }
-          } catch (error) {
-            jsonData[key] = value;
-          }
+            (*textureGroup)[animation.path().filename().string()] = *textures;
         }
-      });
-
-      // Send data to server for analysis
-      fetch("/api/baseline-screening/submit", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(jsonData),
-      })
-        .then((response) => response.json())
-        .then((data) => {
-          if (data.success) {
-            displayResults(data.analysis);
-            loadingOverlay.classList.add("d-none");
-            analysisResult.style.display = "block";
-
-            // Scroll to results
-            analysisResult.scrollIntoView({ behavior: "smooth" });
-          } else {
-            loadingOverlay.classList.add("d-none");
-            alert("Error: " + data.message);
-          }
-        })
-        .catch((error) => {
-          loadingOverlay.classList.add("d-none");
-          console.error("Error:", error);
-          alert("An error occurred during submission.");
-        });
-    });
-
-    // Display risk assessment results
-    function displayResults(analysis) {
-      const riskAlert = document.getElementById("risk-alert");
-      const riskLevel = document.getElementById("risk-level");
-      const riskExplanation = document.getElementById("risk-explanation");
-      const potentialIssues = document.getElementById("potential-issues");
-      const recommendations = document.getElementById("recommendations");
-
-      // Set risk level and color
-      riskLevel.textContent = analysis.riskLevel + " Risk";
-      riskExplanation.textContent = analysis.analysisExplanation;
-
-      // Set alert color based on risk level
-      riskAlert.className = "alert";
-      switch (analysis.riskLevel) {
-        case "Low":
-          riskAlert.classList.add("alert-success");
-          break;
-        case "Medium":
-          riskAlert.classList.add("alert-warning");
-          break;
-        case "High":
-          riskAlert.classList.add("alert-danger");
-          break;
-      }
-
-      // Display potential issues
-      potentialIssues.innerHTML = "";
-      analysis.possibleIssues.forEach((issue) => {
-        const li = document.createElement("li");
-        li.className = "list-group-item";
-        li.innerHTML = `
-          <div class="issue-item">
-            <i class="fas fa-exclamation-circle text-warning"></i>
-            <div>${issue}</div>
-          </div>
-        `;
-        potentialIssues.appendChild(li);
-      });
-
-      // Display recommendations
-      recommendations.innerHTML = "";
-      const recommendationsList = [
-        "Schedule a follow-up appointment with your doctor to discuss these results",
-        "Consider additional screenings based on your risk factors",
-        "Update your medical records with any new information",
-        "Discuss medication adjustments with your healthcare provider",
-      ];
-
-      const ul = document.createElement("ul");
-      ul.className = "list-group list-group-flush";
-      recommendationsList.forEach((rec) => {
-        const li = document.createElement("li");
-        li.className = "list-group-item px-0";
-        li.innerHTML = `
-          <div class="d-flex align-items-start">
-            <i class="fas fa-check-circle text-success me-2 mt-1"></i>
-            <div>${rec}</div>
-          </div>
-        `;
-        ul.appendChild(li);
-      });
-      recommendations.appendChild(ul);
+        Textures[character.path().filename().string()] = *textureGroup;
     }
+}
 
-    // Edit button functionality
-    document.getElementById("editBtn").addEventListener("click", function () {
-      analysisResult.style.display = "none";
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    });
+void Game::initializeWindow()
+{
+	videoMode.width = SCREEN_WIDTH;//1920
+	videoMode.height = SCREEN_HEIGHT;//1080
 
-    // Save button functionality
-    document.getElementById("saveBtn").addEventListener("click", function () {
-      // Show success modal
-      const successModal = new bootstrap.Modal(
-        document.getElementById("successModal")
-      );
-      successModal.show();
-    });
+	window=new RenderWindow(videoMode, "Z-Runner", Style::Titlebar | Style::Close);
 
-    // Add this to your existing script
-    function updateProgress() {
-      const form = document.getElementById("screeningForm");
-      const inputs = form.querySelectorAll(
-        'input:not([type="hidden"]), select, textarea'
-      );
-      const totalInputs = inputs.length;
-      let filledInputs = 0;
+    window->setFramerateLimit(30);
 
-      inputs.forEach((input) => {
-        if (input.type === "checkbox" && input.checked) filledInputs++;
-        else if (input.value.trim() !== "") filledInputs++;
-      });
+    window->setKeyRepeatEnabled(false);
 
-      const percentage = Math.round((filledInputs / totalInputs) * 100);
-      document.querySelector(".progress-bar").style.width = `${percentage}%`;
-      document.getElementById("progressPercentage").textContent = percentage;
-    }
+    deltaTime = clock.restart();
+}
 
-    // Add input event listeners
-    document.querySelectorAll("input, select, textarea").forEach((input) => {
-      input.addEventListener("input", updateProgress);
-      input.addEventListener("change", updateProgress);
-    });
-  });
-</script>
+Game::Game() : mainCamera(FloatRect(0.f, SCREEN_HEIGHT-VIEW_HEIGHT, VIEW_WIDTH, VIEW_HEIGHT)),sceneGenerator(nextSceneObjects, SCREEN_HEIGHT * 0.9f,SCREEN_WIDTH,SCREEN_HEIGHT), grid(SCREEN_WIDTH, vector<PathFindingNode>(SCREEN_HEIGHT, PathFindingNode(0, 0, true))), pathFinder(SCREEN_WIDTH, SCREEN_HEIGHT)
+{
+	this->initializeVariables();
+	this->initializeWindow();
 
-<%- include('../../partials/footer') %>
+    ground.initialize(SCREEN_WIDTH, SCREEN_HEIGHT * 0.1f,0,SCREEN_HEIGHT*0.9f, Color(99, 86, 49,0),true);
+    player.initialize(SCREEN_WIDTH/56, SCREEN_WIDTH / 56, SCREEN_WIDTH / 37, ground.getPosition().y - SCREEN_WIDTH / 56, Textures["player"]);
 
-```
+    Platform safeZoneBarrier;
+    safeZoneBarrier.initialize(200, 100, VIEW_WIDTH - 200, ground.getPosition().y - 100, Color::Red, false);
 
-### views\pages\patient\care-plan.ejs
-```
+    window->setView(mainCamera);
 
-```
+    gameObjects.Platforms.push_back(safeZoneBarrier);
+    gameObjects.Enemies.push_back(new Enemy( 50, VIEW_WIDTH - 300, ground.getPosition().y - 150, Textures["zombie"]));
 
-### views\pages\patient\dashboard.ejs
-```
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Patient Dashboard - MedConnect</title>
-    <link
-      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
-      rel="stylesheet"
-    />
-    <link
-      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
-      rel="stylesheet"
-    />
-    <style>
-      :root {
-        --primary-blue: #2a5c82;
-        --secondary-blue: #5c9baf;
-        --accent-teal: #4ecdc4;
-      }
-
-      .dashboard-header {
-        background: var(--primary-blue);
-        color: white;
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        z-index: 1030;
-        height: 60px;
-      }
-
-      .sidebar {
-        background: #f8f9fa;
-        position: fixed;
-        left: 0;
-        top: 60px;
-        bottom: 0;
-        width: 250px;
-        border-right: 1px solid #dee2e6;
-        overflow-y: auto;
-        z-index: 1020;
-        padding: 20px 0;
-      }
-
-      .main-content {
-        margin-left: 250px;
-        margin-top: 60px;
-        padding: 30px;
-        min-height: calc(100vh - 60px);
-      }
-
-      .nav-link {
-        color: #333;
-        padding: 0.8rem 1.5rem;
-        margin: 0.2rem 1rem;
-        border-radius: 8px;
-        transition: all 0.3s ease;
-      }
-
-      .nav-link:hover {
-        background: var(--accent-teal);
-        color: white !important;
-      }
-
-      .nav-link.active {
-        background: var(--primary-blue);
-        color: white !important;
-      }
-
-      .welcome-card {
-        background: linear-gradient(
-          135deg,
-          var(--secondary-blue),
-          var(--accent-teal)
-        );
-        color: white;
-        border-radius: 15px;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-      }
-
-      .card {
-        border: none;
-        border-radius: 15px;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        transition: transform 0.3s ease;
-      }
-
-      .card:hover {
-        transform: translateY(-5px);
-      }
-
-      .risk-badge {
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: white;
-      }
-
-      .risk-low {
-        background-color: #198754;
-      }
-
-      .risk-medium {
-        background-color: #fd7e14;
-      }
-
-      .risk-high {
-        background-color: #dc3545;
-      }
-
-      .health-concern-item {
-        display: flex;
-        align-items: flex-start;
-        margin-bottom: 8px;
-      }
-
-      .health-concern-item:last-child {
-        margin-bottom: 0;
-      }
-
-      .concern-icon {
-        margin-right: 8px;
-        font-size: 14px;
-      }
-
-      .concern-text {
-        font-size: 14px;
-        line-height: 1.4;
-      }
-
-      .empty-state {
-        color: #dee2e6;
-      }
-    </style>
-  </head>
-  <body>
-    <!-- Fixed Header -->
-    <header class="dashboard-header py-2">
-      <div class="container-fluid">
-        <div class="d-flex justify-content-between align-items-center">
-          <div class="d-flex align-items-center">
-            <i class="fas fa-hospital me-3 fs-4"></i>
-            <h4 class="mb-0">MedConnect</h4>
-          </div>
-          <div class="d-flex align-items-center">
-            <span class="me-3">Welcome, <%= user.fullName %></span>
-            <a href="/logout" class="btn btn-outline-light btn-sm">Logout</a>
-          </div>
-        </div>
-      </div>
-    </header>
-
-    <!-- Fixed Sidebar -->
-    <div class="sidebar">
-      <nav class="nav flex-column">
-        <a
-          href="/patient/dashboard"
-          class="nav-link <%= locals.path === '/patient/dashboard' ? 'active' : '' %>"
-        >
-          <i class="fas fa-home me-2"></i> Dashboard
-        </a>
-        <a
-          href="/patient/appointments"
-          class="nav-link <%= locals.path === '/patient/appointments' ? 'active' : '' %>"
-        >
-          <i class="fas fa-calendar me-2"></i> Appointments
-        </a>
-        <a
-          href="/patient/medical-records"
-          class="nav-link <%= locals.path === '/patient/medical-records' ? 'active' : '' %>"
-        >
-          <i class="fas fa-file-medical me-2"></i> Medical Records
-        </a>
-        <a
-          href="#"
-          class="nav-link <%= locals.path === '/patient/messages' ? 'active' : '' %>"
-        >
-          <i class="fas fa-comments me-2"></i> Messages
-        </a>
-        <a
-          href="#"
-          class="nav-link <%= locals.path === '/patient/navigator' ? 'active' : '' %>"
-        >
-          <i class="fas fa-user-md me-2"></i> My Navigator
-        </a>
-      </nav>
-    </div>
-
-    <!-- Main Content -->
-    <main class="main-content">
-      <div class="container-fluid">
-        <!-- Welcome Card -->
-        <div class="row mb-4">
-          <div class="col-12">
-            <div
-              class="alert alert-info alert-dismissible fade show"
-              role="alert"
-            >
-              <div class="d-flex">
-                <div class="me-3">
-                  <i class="fas fa-info-circle fa-2x"></i>
-                </div>
-                <div>
-                  <h5 class="alert-heading">
-                    Welcome to your Patient Dashboard!
-                  </h5>
-                  <p class="mb-0">
-                    Here you can manage your health records, view risk
-                    assessments, and stay connected with your care team.
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                class="btn-close"
-                data-bs-dismiss="alert"
-                aria-label="Close"
-              ></button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Health Risk Assessment -->
-        <div class="row">
-          <div class="col-md-6 mb-4">
-            <div class="card h-100">
-              <div class="card-body">
-                <h5 class="card-title">
-                  <i class="fas fa-chart-line text-primary me-2"></i>
-                  Health Risk Assessment
-                </h5>
-
-                <div id="riskAssessmentLoading" class="text-center py-4">
-                  <div class="spinner-border text-primary" role="status">
-                    <span class="visually-hidden">Loading...</span>
-                  </div>
-                  <p class="mt-2 text-muted">Loading your risk assessment...</p>
-                </div>
-
-                <div
-                  id="noRiskAssessment"
-                  class="text-center py-4"
-                  style="display: none"
-                >
-                  <div class="empty-state mb-3">
-                    <i class="fas fa-clipboard-list fa-3x text-muted"></i>
-                  </div>
-                  <h6>No Health Risk Assessment</h6>
-                  <p class="text-muted mb-3">
-                    Complete a baseline health screening to get personalized
-                    insights.
-                  </p>
-                  <a href="/baseline-screening" class="btn btn-outline-primary">
-                    <i class="fas fa-plus-circle me-1"></i>
-                    Complete Screening
-                  </a>
-                </div>
-
-                <div id="riskAssessmentContent" style="display: none">
-                  <div class="d-flex align-items-center mb-3">
-                    <div id="riskLevelIndicator" class="me-3 risk-badge">
-                      <i class="fas fa-exclamation-triangle"></i>
-                    </div>
-                    <div>
-                      <h6 id="riskLevelText" class="mb-0">Risk Level</h6>
-                      <small class="text-muted"
-                        >Based on your most recent screening</small
-                      >
-                    </div>
-                  </div>
-
-                  <div class="card mb-3 bg-light">
-                    <div class="card-body p-3">
-                      <h6 class="card-subtitle mb-2">Key Health Concerns</h6>
-                      <ul id="healthConcernsList" class="list-unstyled mb-0">
-                        <!-- Issues will be populated here -->
-                      </ul>
-                    </div>
-                  </div>
-
-                  <p id="analysisText" class="text-muted small mb-3"></p>
-
-                  <div
-                    class="d-flex justify-content-between align-items-center"
-                  >
-                    <small id="screeningDate" class="text-muted"></small>
-                    <a
-                      href="/baseline-screening"
-                      class="btn btn-sm btn-outline-primary"
-                    >
-                      <i class="fas fa-redo me-1"></i>
-                      New Screening
-                    </a>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Medical Records -->
-          <div class="col-md-6 mb-4">
-            <div class="card h-100">
-              <div class="card-body">
-                <h5 class="card-title">
-                  <i class="fas fa-file-medical text-primary me-2"></i>
-                  Medical Records
-                </h5>
-                <p class="card-text text-muted mb-3">
-                  Securely upload and manage your health documents in one place.
-                </p>
-                <div class="d-grid">
-                  <a
-                    href="/patient/medical-records"
-                    class="btn btn-outline-primary"
-                  >
-                    <i class="fas fa-folder-open me-1"></i>
-                    View Medical Records
-                  </a>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Appointments -->
-        <div class="row">
-          <div class="col-md-6 mb-4">
-            <div class="card h-100">
-              <div class="card-body">
-                <h5 class="card-title">
-                  <i class="fas fa-calendar-check text-primary me-2"></i>
-                  Upcoming Appointments
-                </h5>
-                <p class="card-text text-muted">
-                  No upcoming appointments scheduled.
-                </p>
-                <div class="d-grid">
-                  <button class="btn btn-outline-primary" disabled>
-                    <i class="fas fa-plus-circle me-1"></i>
-                    Schedule Appointment
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Care Team -->
-          <div class="col-md-6 mb-4">
-            <div class="card h-100">
-              <div class="card-body">
-                <h5 class="card-title">
-                  <i class="fas fa-user-md text-primary me-2"></i>
-                  Your Care Team
-                </h5>
-                <p class="card-text text-muted">
-                  Care team features coming soon!
-                </p>
-                <div class="d-grid">
-                  <button class="btn btn-outline-primary" disabled>
-                    <i class="fas fa-search me-1"></i>
-                    Find Providers
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </main>
-
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-      document.addEventListener("DOMContentLoaded", function () {
-        // Fetch the latest risk assessment
-        fetch("/api/baseline-screening/latest")
-          .then((response) => response.json())
-          .then((data) => {
-            // Hide loading spinner
-            document.getElementById("riskAssessmentLoading").style.display =
-              "none";
-
-            if (data.success && data.screening) {
-              // Show risk assessment content
-              document.getElementById("riskAssessmentContent").style.display =
-                "block";
-
-              // Get risk assessment data
-              const assessment = data.screening.riskAssessment;
-
-              // Display risk level
-              const riskLevelIndicator =
-                document.getElementById("riskLevelIndicator");
-              const riskLevelText = document.getElementById("riskLevelText");
-
-              riskLevelText.textContent = `${assessment.riskLevel} Risk Level`;
-
-              if (assessment.riskLevel === "Low") {
-                riskLevelIndicator.className = "me-3 risk-badge risk-low";
-                riskLevelIndicator.innerHTML = '<i class="fas fa-check"></i>';
-              } else if (assessment.riskLevel === "Medium") {
-                riskLevelIndicator.className = "me-3 risk-badge risk-medium";
-                riskLevelIndicator.innerHTML =
-                  '<i class="fas fa-exclamation"></i>';
-              } else {
-                riskLevelIndicator.className = "me-3 risk-badge risk-high";
-                riskLevelIndicator.innerHTML =
-                  '<i class="fas fa-exclamation-triangle"></i>';
-              }
-
-              // Display health concerns
-              const healthConcernsList =
-                document.getElementById("healthConcernsList");
-              healthConcernsList.innerHTML = "";
-
-              if (
-                assessment.possibleIssues &&
-                assessment.possibleIssues.length > 0
-              ) {
-                assessment.possibleIssues.forEach((issue) => {
-                  const li = document.createElement("li");
-                  li.className = "health-concern-item";
-
-                  let iconClass = "text-success";
-                  if (issue.toLowerCase().includes("high")) {
-                    iconClass = "text-danger";
-                  } else if (
-                    issue.toLowerCase().includes("moderate") ||
-                    issue.toLowerCase().includes("medium")
-                  ) {
-                    iconClass = "text-warning";
-                  }
-
-                  li.innerHTML = `
-                                    <span class="concern-icon ${iconClass}"><i class="fas fa-circle"></i></span>
-                                    <span class="concern-text">${issue}</span>
-                                `;
-
-                  healthConcernsList.appendChild(li);
-                });
-              } else {
-                const li = document.createElement("li");
-                li.className = "health-concern-item";
-                li.innerHTML = `
-                                <span class="concern-icon text-success"><i class="fas fa-check-circle"></i></span>
-                                <span class="concern-text">No significant health concerns identified</span>
-                            `;
-                healthConcernsList.appendChild(li);
-              }
-
-              // Display analysis text
-              document.getElementById("analysisText").textContent =
-                assessment.analysisExplanation;
-
-              // Display screening date
-              const screeningDate = new Date(
-                data.screening.createdAt
-              ).toLocaleDateString("en-US", {
-                year: "numeric",
-                month: "short",
-                day: "numeric",
-              });
-              document.getElementById(
-                "screeningDate"
-              ).textContent = `Last updated: ${screeningDate}`;
-            } else {
-              // Show no assessment message
-              document.getElementById("noRiskAssessment").style.display =
-                "block";
-            }
-          })
-          .catch((error) => {
-            console.error("Error fetching risk assessment:", error);
-            document.getElementById("riskAssessmentLoading").style.display =
-              "none";
-            document.getElementById("noRiskAssessment").style.display = "block";
-          });
-      });
-    </script>
-
-    <!-- Chatbot CSS and JavaScript -->
-    <link href="/css/chatbot-styles.css" rel="stylesheet" />
-    <script src="/js/chatbot.js"></script>
-  </body>
-</html>
-
-```
-
-### views\pages\patient\feedback.ejs
-```
-
-```
-
-### views\pages\patient\medical-insights.ejs
-```
-
-```
-
-### views\pages\patient\medical-records.ejs
-```
-<%- include('../../partials/header') %>
-
-<div class="row">
-  <!-- Upload Section -->
-  <div class="col-md-5 col-lg-4">
-    <div class="card mb-4">
-      <div class="card-body">
-        <h5 class="card-title mb-4">Upload Medical Record</h5>
-        <form id="uploadForm" enctype="multipart/form-data" class="px-2">
-          <div class="mb-3">
-            <label class="form-label">Title</label>
-            <input type="text" class="form-control" name="title" required />
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Description</label>
-            <textarea
-              class="form-control"
-              name="description"
-              rows="3"
-              required
-            ></textarea>
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Record Type</label>
-            <select class="form-select" name="recordType" required>
-              <option value="">Select Type</option>
-              <option value="Prescription">Prescription</option>
-              <option value="Lab Report">Lab Report</option>
-              <option value="Imaging">Imaging</option>
-              <option value="Discharge Summary">Discharge Summary</option>
-              <option value="Other">Other</option>
-            </select>
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Record Date</label>
-            <input
-              type="date"
-              class="form-control"
-              name="recordDate"
-              required
-            />
-          </div>
-          <div class="mb-3">
-            <label class="form-label">File</label>
-            <input
-              type="file"
-              class="form-control"
-              name="file"
-              accept=".pdf,.jpg,.jpeg,.png"
-              required
-            />
-            <small class="text-muted"
-              >Supported formats: PDF, JPG, PNG (Max 10MB)</small
-            >
-          </div>
-          <button type="submit" class="btn btn-primary w-100">
-            <i class="fas fa-upload me-2"></i>Upload Record
-          </button>
-        </form>
-      </div>
-    </div>
-
-    <!-- Search & Filter Section -->
-    <div class="card mb-4">
-      <div class="card-body">
-        <h5 class="card-title mb-4">Search & Filter</h5>
-
-        <!-- Search Bar -->
-        <div class="mb-3">
-          <div class="input-group">
-            <input
-              type="text"
-              id="searchInput"
-              class="form-control"
-              placeholder="Search records..."
-            />
-            <button class="btn btn-primary" type="button" id="searchButton">
-              <i class="fas fa-search"></i>
-            </button>
-          </div>
-        </div>
-
-        <!-- Filter Buttons -->
-        <div class="filter-buttons">
-          <div class="d-flex flex-wrap gap-2 mb-2">
-            <button
-              class="btn btn-sm btn-outline-primary rounded-pill filter-btn active"
-              data-filter="all"
-            >
-              All Records
-            </button>
-            <button
-              class="btn btn-sm btn-outline-info rounded-pill filter-btn"
-              data-filter="Prescription"
-            >
-              Prescriptions
-            </button>
-            <button
-              class="btn btn-sm btn-outline-success rounded-pill filter-btn"
-              data-filter="Lab Report"
-            >
-              Lab Reports
-            </button>
-            <button
-              class="btn btn-sm btn-outline-warning rounded-pill filter-btn"
-              data-filter="Imaging"
-            >
-              Imaging
-            </button>
-            <button
-              class="btn btn-sm btn-outline-secondary rounded-pill filter-btn"
-              data-filter="Discharge Summary"
-            >
-              Discharge Summaries
-            </button>
-            <button
-              class="btn btn-sm btn-outline-dark rounded-pill filter-btn"
-              data-filter="Other"
-            >
-              Other
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Records List Section -->
-  <div class="col-md-8">
-    <div class="card mb-4">
-      <div class="card-body">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-          <h5 class="card-title mb-0">
-            <i class="fas fa-file-medical text-primary me-2"></i>My Medical Records
-          </h5>
-          <span class="badge rounded-pill bg-primary" id="recordCount">0 Records</span>
-        </div>
-
-        <!-- Search Results Section (Initially Hidden) -->
-        <div id="searchResultsSection" style="display: none">
-          <h6 class="border-bottom pb-2 mb-3">
-            Search Results
-            <span id="searchResultsCount" class="text-muted">(0 results)</span>
-          </h6>
-          <div id="searchResults" class="list-group mb-4">
-            <!-- Search results will be populated here -->
-          </div>
-          <button id="clearSearch" class="btn btn-sm btn-outline-secondary mb-4">
-            <i class="fas fa-times me-2"></i>Clear Search
-          </button>
-        </div>
-
-        <!-- All Records List -->
-        <div id="recordsList" class="list-group">
-          <!-- Records will be populated here -->
-          <div class="text-center py-5 text-muted" id="noRecords">
-            <i class="fas fa-folder-open fa-3x mb-3"></i>
-            <p>No records found. Upload your first medical record!</p>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Medical Records Chat Interface -->
-    <div class="card">
-      <div class="card-header bg-primary text-white">
-        <div class="d-flex align-items-center">
-          <i class="fas fa-robot me-2"></i>
-          <h5 class="mb-0">Medical Records Assistant</h5>
-        </div>
-      </div>
-      <div class="card-body">
-        <div class="mb-3 chat-container" style="height: 300px; overflow-y: auto; border: 1px solid #eee; border-radius: 5px; padding: 15px;">
-          <div id="medicalRecordChatMessages">
-            <div class="p-3 bg-light rounded mb-3">
-              <i class="fas fa-robot text-primary me-2"></i>
-              <span>Hello! I can help answer questions about your medical records. Try asking things like "What medications am I taking?" or "What were the results of my last blood test?"</span>
-            </div>
-          </div>
-        </div>
-        <form id="medicalRecordChatForm" class="d-flex">
-          <input type="text" id="medicalRecordQuestion" class="form-control me-2" placeholder="Ask a question about your medical records...">
-          <button type="submit" class="btn btn-primary">
-            <i class="fas fa-paper-plane"></i>
-          </button>
-        </form>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Edit Record Modal -->
-<div class="modal fade" id="editRecordModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title">Edit Medical Record</h5>
-        <button
-          type="button"
-          class="btn-close"
-          data-bs-dismiss="modal"
-          aria-label="Close"
-        ></button>
-      </div>
-      <div class="modal-body">
-        <form id="editForm" class="px-2" enctype="multipart/form-data">
-          <input type="hidden" id="editRecordId" />
-          <div class="mb-3">
-            <label class="form-label">Title</label>
-            <input type="text" class="form-control" id="editTitle" required />
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Description</label>
-            <textarea
-              class="form-control"
-              id="editDescription"
-              rows="3"
-              required
-            ></textarea>
-          </div>
-          <div class="row">
-            <div class="col-md-6 mb-3">
-              <label class="form-label">Record Type</label>
-              <select class="form-select" id="editRecordType" required>
-                <option value="Prescription">Prescription</option>
-                <option value="Lab Report">Lab Report</option>
-                <option value="Imaging">Imaging</option>
-                <option value="Discharge Summary">Discharge Summary</option>
-                <option value="Other">Other</option>
-              </select>
-            </div>
-            <div class="col-md-6 mb-3">
-              <label class="form-label">Record Date</label>
-              <input
-                type="date"
-                class="form-control"
-                id="editRecordDate"
-                required
-              />
-            </div>
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Update File</label>
-            <input
-              type="file"
-              class="form-control"
-              id="editFile"
-              name="file"
-              accept=".pdf,.jpg,.jpeg,.png"
-            />
-            <small class="text-muted">Leave empty to keep existing file</small>
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Current File</label>
-            <div id="currentFilePreview" class="border rounded p-2">
-              <div class="d-flex align-items-center">
-                <i class="fas fa-file me-2"></i>
-                <span id="currentFileName">No file selected</span>
-              </div>
-              <div id="filePreviewContent" class="mt-2"></div>
-            </div>
-          </div>
-        </form>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-          Cancel
-        </button>
-        <button type="button" class="btn btn-primary" id="updateRecord">
-          Update Record
-        </button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Delete Confirmation Modal -->
-<div class="modal fade" id="deleteRecordModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title">Confirm Delete</h5>
-        <button
-          type="button"
-          class="btn-close"
-          data-bs-dismiss="modal"
-          aria-label="Close"
-        ></button>
-      </div>
-      <div class="modal-body">
-        <p>Are you sure you want to delete this medical record?</p>
-        <p class="text-danger">This action cannot be undone.</p>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-          Cancel
-        </button>
-        <button type="button" class="btn btn-danger" id="confirmDelete">
-          Delete Record
-        </button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- View Record Modal -->
-<div class="modal fade" id="viewRecordModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-lg">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="viewRecordTitle"></h5>
-        <button
-          type="button"
-          class="btn-close"
-          data-bs-dismiss="modal"
-          aria-label="Close"
-        ></button>
-      </div>
-      <div class="modal-body">
-        <div class="row mb-3">
-          <div class="col-md-6">
-            <p>
-              <strong>Type:</strong>
-              <span class="badge rounded-pill" id="viewRecordType"></span>
-            </p>
-            <p>
-              <strong>Record Date:</strong>
-              <span id="viewRecordDate"></span>
-            </p>
-            <p>
-              <strong>Upload Date:</strong>
-              <span id="viewUploadDate"></span>
-            </p>
-          </div>
-          <div class="col-md-6">
-            <p>
-              <strong>Description:</strong>
-            </p>
-            <p id="viewDescription"></p>
-          </div>
-        </div>
-        <div class="text-center" id="viewRecordFile"></div>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-          Close
-        </button>
-        <a
-          href="#"
-          class="btn btn-primary"
-          id="downloadRecordBtn"
-          target="_blank"
-        >
-          <i class="fas fa-download me-2"></i>Download
-        </a>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Bootstrap Bundle with Popper -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
-<script>
-  document.addEventListener("DOMContentLoaded", function () {
-    const uploadForm = document.getElementById("uploadForm");
-    const recordsList = document.getElementById("recordsList");
-    const noRecords = document.getElementById("noRecords");
-    const recordCount = document.getElementById("recordCount");
-    const searchInput = document.getElementById("searchInput");
-    const searchButton = document.getElementById("searchButton");
-    const clearSearch = document.getElementById("clearSearch");
-    const searchResults = document.getElementById("searchResults");
-    const searchResultsSection = document.getElementById(
-      "searchResultsSection"
-    );
-    const searchResultsCount = document.getElementById("searchResultsCount");
-    const filterButtons = document.querySelectorAll(".filter-btn");
-
-    let records = [];
-    let currentFilter = "all";
-    let currentRecordId = null;
-
-    // Load records when page loads
-    fetchRecords();
-
-    // Handle form submission
-    uploadForm.addEventListener("submit", function (e) {
-      e.preventDefault();
-      const formData = new FormData(uploadForm);
-
-      // Show loading
-      Swal.fire({
-        title: "Uploading...",
-        text: "Please wait while we upload your record.",
-        allowOutsideClick: false,
-        showConfirmButton: false,
-        willOpen: () => {
-          Swal.showLoading();
-        },
-      });
-
-      fetch("/api/medical-records/upload", {
-        method: "POST",
-        body: formData,
-      })
-        .then((response) => response.json())
-        .then((data) => {
-          if (data.success) {
-            Swal.fire({
-              icon: "success",
-              title: "Success!",
-              text: data.message,
-            });
-            uploadForm.reset();
-            fetchRecords();
-          } else {
-            Swal.fire({
-              icon: "error",
-              title: "Error!",
-              text: data.message,
-            });
-          }
-        })
-        .catch((error) => {
-          console.error("Error:", error);
-          Swal.fire({
-            icon: "error",
-            title: "Error!",
-            text: "An error occurred during upload.",
-          });
-        });
-    });
-
-    // Fetch records function
-    function fetchRecords() {
-      fetch("/api/medical-records")
-        .then((response) => response.json())
-        .then((data) => {
-          if (data.success) {
-            records = data.records;
-            updateRecordsList();
-          } else {
-            console.error("Error fetching records:", data.message);
-          }
-        })
-        .catch((error) => {
-          console.error("Error:", error);
-        });
-    }
-
-    // Update records list function
-    function updateRecordsList() {
-      // Update record count
-      recordCount.textContent = `${records.length} Records`;
-
-      // Filter records if needed
-      let filteredRecords = records;
-      if (currentFilter !== "all") {
-        filteredRecords = records.filter(
-          (record) => record.recordType === currentFilter
-        );
-      }
-
-      // Clear the list
-      recordsList.innerHTML = "";
-
-      // Update UI based on records
-      if (filteredRecords.length === 0) {
-        noRecords.style.display = "block";
-      } else {
-        noRecords.style.display = "none";
-
-        // Add records to list
-        filteredRecords.forEach((record) => {
-          // Create record item
-          const recordItem = createRecordItem(record);
-          recordsList.appendChild(recordItem);
-        });
-      }
-    }
-
-    // Create record item function
-    function createRecordItem(record) {
-      const recordDate = new Date(record.recordDate).toLocaleDateString();
-      const uploadDate = new Date(record.uploadDate).toLocaleDateString();
-
-      // Get badge class based on record type
-      let badgeClass = "bg-secondary";
-      switch (record.recordType) {
-        case "Prescription":
-          badgeClass = "bg-info";
-          break;
-        case "Lab Report":
-          badgeClass = "bg-success";
-          break;
-        case "Imaging":
-          badgeClass = "bg-warning";
-          break;
-        case "Discharge Summary":
-          badgeClass = "bg-primary";
-          break;
-      }
-
-      // Create record item element
-      const div = document.createElement("div");
-      div.className = "list-group-item list-group-item-action";
-      div.innerHTML = `
-        <div class="d-flex w-100 justify-content-between align-items-center">
-          <h6 class="mb-1">${record.title}</h6>
-          <span class="badge ${badgeClass}">${record.recordType}</span>
-        </div>
-        <p class="mb-1 text-truncate">${record.description}</p>
-        <div class="d-flex justify-content-between align-items-center">
-          <small class="text-muted">Date: ${recordDate}</small>
-          <div>
-            <button class="btn btn-sm btn-outline-primary view-btn" data-id="${record._id}">
-              <i class="fas fa-eye"></i>
-            </button>
-            <button class="btn btn-sm btn-outline-secondary edit-btn" data-id="${record._id}">
-              <i class="fas fa-edit"></i>
-            </button>
-            <button class="btn btn-sm btn-outline-danger delete-btn" data-id="${record._id}">
-              <i class="fas fa-trash"></i>
-            </button>
-          </div>
-        </div>
-      `;
-
-      // Add event listeners for buttons
-      div.querySelector(".view-btn").addEventListener("click", function () {
-        viewRecord(record);
-      });
-
-      div.querySelector(".edit-btn").addEventListener("click", function () {
-        openEditModal(record);
-      });
-
-      div.querySelector(".delete-btn").addEventListener("click", function () {
-        openDeleteModal(record._id);
-      });
-
-      return div;
-    }
-
-    // Handle filter buttons
-    filterButtons.forEach((button) => {
-      button.addEventListener("click", function () {
-        // Remove active class from all buttons
-        filterButtons.forEach((btn) => btn.classList.remove("active"));
-
-        // Add active class to clicked button
-        this.classList.add("active");
-
-        // Update filter
-        currentFilter = this.getAttribute("data-filter");
-
-        // Update records list
-        updateRecordsList();
-      });
-    });
-
-    // Handle search
-    searchButton.addEventListener("click", function () {
-      const query = searchInput.value.trim();
-      if (query) {
-        searchRecords(query);
-      }
-    });
-
-    // Search on Enter key
-    searchInput.addEventListener("keyup", function (e) {
-      if (e.key === "Enter") {
-        const query = searchInput.value.trim();
-        if (query) {
-          searchRecords(query);
-        }
-      }
-    });
-
-    // Clear search
-    clearSearch.addEventListener("click", function () {
-      searchInput.value = "";
-      searchResultsSection.style.display = "none";
-      updateRecordsList();
-    });
-
-    // Search records function
-    function searchRecords(query) {
-      fetch(`/api/medical-records/search?query=${encodeURIComponent(query)}`)
-        .then((response) => response.json())
-        .then((data) => {
-          if (data.success) {
-            displaySearchResults(data.results);
-          } else {
-            console.error("Error searching records:", data.message);
-          }
-        })
-        .catch((error) => {
-          console.error("Error:", error);
-        });
-    }
-
-    // Display search results
-    function displaySearchResults(results) {
-      searchResults.innerHTML = "";
-      searchResultsCount.textContent = `(${results.length} results)`;
-
-      if (results.length === 0) {
-        const noResults = document.createElement("div");
-        noResults.className = "text-center py-3 text-muted";
-        noResults.innerHTML = `
-          <p>No records match your search.</p>
-        `;
-        searchResults.appendChild(noResults);
-      } else {
-        results.forEach((result) => {
-          const record = result.record;
-          const recordItem = createRecordItem(record);
-
-          // Add explanation if available
-          if (result.explanation) {
-            const explanation = document.createElement("div");
-            explanation.className = "mt-2 small text-muted";
-            explanation.innerHTML = `<i class="fas fa-info-circle me-1"></i> ${result.explanation}`;
-            recordItem.appendChild(explanation);
-          }
-
-          searchResults.appendChild(recordItem);
-        });
-      }
-
-      searchResultsSection.style.display = "block";
-    }
-
-    // View record function
-    function viewRecord(record) {
-      const recordDate = new Date(record.recordDate).toLocaleDateString();
-      const uploadDate = new Date(record.uploadDate).toLocaleDateString();
-
-      // Get badge class based on record type
-      let badgeClass = "bg-secondary";
-      switch (record.recordType) {
-        case "Prescription":
-          badgeClass = "bg-info";
-          break;
-        case "Lab Report":
-          badgeClass = "bg-success";
-          break;
-        case "Imaging":
-          badgeClass = "bg-warning";
-          break;
-        case "Discharge Summary":
-          badgeClass = "bg-primary";
-          break;
-      }
-
-      // Update modal content
-      document.getElementById("viewRecordTitle").textContent = record.title;
-      document.getElementById("viewRecordType").textContent = record.recordType;
-      document.getElementById(
-        "viewRecordType"
-      ).className = `badge ${badgeClass}`;
-      document.getElementById("viewRecordDate").textContent = recordDate;
-      document.getElementById("viewUploadDate").textContent = uploadDate;
-      document.getElementById("viewDescription").textContent =
-        record.description;
-
-      // Set download link
-      document.getElementById("downloadRecordBtn").href = record.fileUrl;
-
-      // Display file
-      const fileContainer = document.getElementById("viewRecordFile");
-      fileContainer.innerHTML = "";
-
-      if (record.fileUrl.endsWith(".pdf")) {
-        // For PDF files, show an embed
-        fileContainer.innerHTML = `
-          <embed src="${record.fileUrl}" type="application/pdf" width="100%" height="500px" />
-        `;
-      } else {
-        // For images, show an image
-        fileContainer.innerHTML = `
-          <img src="${record.fileUrl}" class="img-fluid" alt="Medical Record" />
-        `;
-      }
-
-      // Show modal
-      const viewModal = new bootstrap.Modal(
-        document.getElementById("viewRecordModal")
-      );
-      viewModal.show();
-    }
-
-    // Open edit modal function
-    function openEditModal(record) {
-      // Set form values
-      document.getElementById("editRecordId").value = record._id;
-      document.getElementById("editTitle").value = record.title;
-      document.getElementById("editDescription").value = record.description;
-      document.getElementById("editRecordType").value = record.recordType;
-
-      // Format date for input field (YYYY-MM-DD)
-      const recordDate = new Date(record.recordDate);
-      const formattedDate = recordDate.toISOString().split("T")[0];
-      document.getElementById("editRecordDate").value = formattedDate;
-
-      // Update file preview
-      document.getElementById("currentFileName").textContent = record.title;
-      const previewContainer = document.getElementById("filePreviewContent");
-      previewContainer.innerHTML = "";
-
-      if (record.fileUrl) {
-        if (record.fileUrl.toLowerCase().endsWith(".pdf")) {
-          previewContainer.innerHTML = `
-            <div class="ratio ratio-16x9" style="max-height: 300px;">
-              <embed src="${record.fileUrl}" type="application/pdf" width="100%" height="100%"/>
-            </div>
-          `;
-        } else {
-          previewContainer.innerHTML = `
-            <img src="${record.fileUrl}" class="img-fluid rounded" style="max-height: 200px;" alt="File preview"/>
-          `;
-        }
-      }
-
-      // Show modal
-      const editModal = new bootstrap.Modal(
-        document.getElementById("editRecordModal")
-      );
-      editModal.show();
-    }
-
-    // Update record event listener
-    document
-      .getElementById("updateRecord")
-      .addEventListener("click", function () {
-        const recordId = document.getElementById("editRecordId").value;
-        const title = document.getElementById("editTitle").value;
-        const description = document.getElementById("editDescription").value;
-        const recordType = document.getElementById("editRecordType").value;
-        const recordDate = document.getElementById("editRecordDate").value;
-
-        // Validate form
-        if (!title || !description || !recordType || !recordDate) {
-          Swal.fire({
-            icon: "error",
-            title: "Error!",
-            text: "Please fill all required fields.",
-          });
-          return;
-        }
-
-        // Update record
-        updateRecord(recordId, title, description, recordType, recordDate);
-      });
-
-    // Update record function
-    function updateRecord(id, title, description, recordType, recordDate) {
-      // Show loading indicator
-      Swal.fire({
-        title: "Updating...",
-        text: "Please wait while we update your record.",
-        allowOutsideClick: false,
-        showConfirmButton: false,
-        willOpen: () => {
-          Swal.showLoading();
-        },
-      });
-
-      const formData = new FormData();
-      formData.append("title", title);
-      formData.append("description", description);
-      formData.append("recordType", recordType);
-      formData.append("recordDate", recordDate);
-
-      // Add file if selected
-      const fileInput = document.getElementById("editFile");
-      if (fileInput.files.length > 0) {
-        formData.append("file", fileInput.files[0]);
-      }
-
-      fetch(`/api/medical-records/${id}`, {
-        method: "PUT",
-        body: formData,
-      })
-        .then((response) => response.json())
-        .then((data) => {
-          if (data.success) {
-            const editModal = bootstrap.Modal.getInstance(
-              document.getElementById("editRecordModal")
-            );
-            editModal.hide();
-
-            Swal.fire({
-              icon: "success",
-              title: "Success!",
-              text: data.message,
-            });
-
-            fetchRecords();
-          } else {
-            Swal.fire({
-              icon: "error",
-              title: "Error!",
-              text: data.message,
-            });
-          }
-        })
-        .catch((error) => {
-          console.error("Error:", error);
-          Swal.fire({
-            icon: "error",
-            title: "Error!",
-            text: "An error occurred while updating the record.",
-          });
-        });
-    }
-
-    // Open delete modal function
-    function openDeleteModal(id) {
-      currentRecordId = id;
-      const deleteModal = new bootstrap.Modal(
-        document.getElementById("deleteRecordModal")
-      );
-      deleteModal.show();
-    }
-
-    // Confirm delete event listener
-    document
-      .getElementById("confirmDelete")
-      .addEventListener("click", function () {
-        if (currentRecordId) {
-          deleteRecord(currentRecordId);
-        }
-      });
-
-    // Delete record function
-    function deleteRecord(id) {
-      // Show loading indicator
-      Swal.fire({
-        title: "Deleting...",
-        text: "Please wait while we delete your record.",
-        allowOutsideClick: false,
-        showConfirmButton: false,
-        willOpen: () => {
-          Swal.showLoading();
-        },
-      });
-
-      fetch(`/api/medical-records/${id}`, {
-        method: "DELETE",
-      })
-        .then((response) => response.json())
-        .then((data) => {
-          if (data.success) {
-            // Close modal
-            const deleteModal = bootstrap.Modal.getInstance(
-              document.getElementById("deleteRecordModal")
-            );
-            deleteModal.hide();
-
-            // Show success message
-            Swal.fire({
-              icon: "success",
-              title: "Success!",
-              text: data.message,
-            });
-
-            // Refresh records
-            fetchRecords();
-          } else {
-            Swal.fire({
-              icon: "error",
-              title: "Error!",
-              text: data.message,
-            });
-          }
-        })
-        .catch((error) => {
-          console.error("Error:", error);
-          Swal.fire({
-            icon: "error",
-            title: "Error!",
-            text: "An error occurred while deleting the record.",
-          });
-        });
-    }
-
-    // Add preview for new file selection
-    document
-      .getElementById("editFile")
-      .addEventListener("change", function (e) {
-        const file = e.target.files[0];
-        if (file) {
-          document.getElementById("currentFileName").textContent = file.name;
-          const previewContainer =
-            document.getElementById("filePreviewContent");
-
-          if (file.type === "application/pdf") {
-            const url = URL.createObjectURL(file);
-            previewContainer.innerHTML = `
-            <div class="ratio ratio-16x9" style="max-height: 300px;">
-              <embed src="${url}" type="application/pdf" width="100%" height="100%"/>
-            </div>
-          `;
-          } else if (file.type.startsWith("image/")) {
-            const reader = new FileReader();
-            reader.onload = function (e) {
-              previewContainer.innerHTML = `
-              <img src="${e.target.result}" class="img-fluid rounded" style="max-height: 200px;" alt="File preview"/>
-            `;
-            };
-            reader.readAsDataURL(file);
-          }
-        }
-      });
-
-    // Medical Records Chat functionality
-    const medicalRecordChatForm = document.getElementById("medicalRecordChatForm");
-    const medicalRecordQuestion = document.getElementById("medicalRecordQuestion");
-    const medicalRecordChatMessages = document.getElementById("medicalRecordChatMessages");
-
-    function addChatMessage(message, isUser = false) {
-      const messageDiv = document.createElement("div");
-      messageDiv.className = `${isUser ? 'text-end' : ''} mb-3`;
-      
-      const contentDiv = document.createElement("div");
-      contentDiv.className = `d-inline-block p-3 rounded ${
-        isUser ? 'bg-primary text-white' : 'bg-light'
-      }`;
-      contentDiv.style.maxWidth = '80%';
-      
-      if (!isUser) {
-        contentDiv.innerHTML = `<i class="fas fa-robot text-primary me-2"></i>`;
-      }
-      
-      contentDiv.innerHTML += message;
-      
-      messageDiv.appendChild(contentDiv);
-      medicalRecordChatMessages.appendChild(messageDiv);
-      
-      // Scroll to bottom
-      const chatContainer = medicalRecordChatMessages.parentElement;
-      chatContainer.scrollTop = chatContainer.scrollHeight;
-    }
-
-    medicalRecordChatForm.addEventListener("submit", async function (e) {
-      e.preventDefault();
-      const question = medicalRecordQuestion.value.trim();
-      
-      if (!question) return;
-      
-      // Add user message
-      addChatMessage(question, true);
-      medicalRecordQuestion.value = "";
-      
-      // Add loading message
-      const loadingDiv = document.createElement("div");
-      loadingDiv.className = "mb-3";
-      loadingDiv.innerHTML = `
-        <div class="d-inline-block p-3 rounded bg-light">
-          <i class="fas fa-robot text-primary me-2"></i>
-          <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-          Processing your question...
-        </div>
-      `;
-      medicalRecordChatMessages.appendChild(loadingDiv);
-      
-      // Scroll to bottom
-      const chatContainer = medicalRecordChatMessages.parentElement;
-      chatContainer.scrollTop = chatContainer.scrollHeight;
-      
-      try {
-        const response = await fetch("/api/medical-records/query", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ question }),
-        });
-        
-        const data = await response.json();
-        
-        // Remove loading message
-        medicalRecordChatMessages.removeChild(loadingDiv);
-        
-        if (data.success) {
-          let answer = data.answer;
-          if (data.sources && data.sources.length > 0) {
-            answer += '<hr class="my-2">';
-            answer += '<small class="text-muted">Sources:</small><br>';
-            answer += '<small class="text-muted">' + data.sources.join('<br>') + '</small>';
-          }
-          addChatMessage(answer);
-        } else {
-          addChatMessage("I'm sorry, I encountered an error processing your question. Please try again.");
-        }
-      } catch (error) {
-        console.error("Error:", error);
-        // Remove loading message
-        medicalRecordChatMessages.removeChild(loadingDiv);
-        addChatMessage("I'm sorry, I encountered an error processing your question. Please try again.");
-      }
-    });
-  });
-</script>
-
-<!-- Chatbot CSS and JavaScript -->
-<link href="/css/chatbot-styles.css" rel="stylesheet" />
-<script src="/js/chatbot.js"></script>
-</body>
-</html>
-
-```
-
-### views\pages\patient\profile.ejs
-```
-
-```
-
-### views\pages\patient\reports.ejs
-```
-
-```
-
-### views\pages\patient\resources.ejs
-```
-
-```
-
-### views\partials\footer.ejs
-```
-        </main>
-      </div>
-    </div>
     
-    <!-- Bootstrap Bundle with Popper -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <!-- SweetAlert2 -->
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <!-- Chatbot JavaScript -->
-    <script src="/js/chatbot.js"></script>
-  </body>
-</html> 
+    /*for (int x = 0; x < SCREEN_WIDTH; x++) {
+        for (int y = 0; y < SCREEN_HEIGHT; y++) {
+            grid[x][y] = PathFindingNode(x, y, true); // Initialize each node as walkable
+        }
+    }
+
+    // Adjust walkable nodes based on intersections with platforms and obstacles
+    for (auto& row : grid) {
+        for (auto& node : row) {
+            sf::FloatRect nodeRect(static_cast<float>(node.x), static_cast<float>(node.y), 1.0f, 1.0f); // Create SFML FloatRect for current node
+
+            // Check intersections with platforms
+            for (Platform& platform : gameObjects.Platforms) {
+                if (platform.getObject().getGlobalBounds().intersects(nodeRect)) {
+                    node.walkable = false;
+                    break; // No need to check other platforms if already not walkable
+                }
+            }
+
+            // Check intersections with obstacles (assuming Obstacle is similar to Platform)
+            if (!node.walkable) continue; // Skip obstacle check if node is already not walkable
+            for (Obstacle& obstacle : gameObjects.Obstacles) {
+                if (obstacle.getObject().getGlobalBounds().intersects(nodeRect)) {
+                    node.walkable = false;
+                    break; // No need to check other obstacles if already not walkable
+                }
+            }
+        }
+    }
+
+    pathFinder.setGrid(grid);*/
+
+
+    sceneGenerator.setTextures(Textures);
+    sceneGenerator.generateNextScene();
+}
+
+Game::~Game()
+{
+	delete window;
+}
+
+void Game::eventHandler()
+{
+    while (window->pollEvent(event)) {
+        switch (event.type) {
+
+        case Event::Closed:
+            window->close();
+            break;
+        case Event::KeyPressed:
+            switch (event.key.code) {
+            case Keyboard::Escape:
+                window->close();
+                break;
+            case Keyboard::A:
+                pressedKey = event.key.code;
+                break;
+            case Keyboard::D:
+                pressedKey = event.key.code;
+                break;
+            case Keyboard::Space:
+                if (!player.isFalling) {
+                    player.addVelocity(Vector2f(0,-JUMP_HEIGHT));
+                }
+            }
+            break;
+        case Event::KeyReleased:
+            switch (event.key.code) {
+            case Keyboard::A:
+                pressedKey = -1;
+                break;
+            case Keyboard::D:
+                pressedKey = -1;
+                break;
+            }
+            break;
+
+        }
+    }
+
+}
+
+void Game::update()
+{
+    vector<RectangleShape> objects;
+
+    Vector2f mousePos = window->mapPixelToCoords(Mouse::getPosition(*window));
+    deltaTime = clock.restart();
+
+    eventHandler();
+
+    if (pressedKey == Keyboard::A) {
+        player.addVelocity(Vector2f(-MOVEMENT_SPEED, 0));
+    }
+    else if (pressedKey==Keyboard::D) {
+        player.addVelocity(Vector2f(MOVEMENT_SPEED, 0));
+
+   }
+
+    //Player on ground check
+    player.isFalling = player.isCollidingWith(ground.getObject(),true)!=0;
+    for (Platform platform : gameObjects.Platforms) {
+        int collidingSide = player.isCollidingWith(platform.getObject(),true);
+        objects.push_back(platform.getObject());
+
+        player.isFalling = player.isFalling && collidingSide!=0;
+
+        if (collidingSide==0) continue;
+
+        if (collidingSide == 1) {
+            player.setVelocity(Vector2f(player.getVelocity().x < 0 ? 0 : player.getVelocity().x, player.getVelocity().y));
+        }
+        else if (collidingSide == 3) {
+            player.setVelocity(Vector2f(player.getVelocity().x > 0 ? 0 : player.getVelocity().x, player.getVelocity().y));
+        }
+        else if (collidingSide == 2 && !platform.ispassThrough) {
+            player.setVelocity(Vector2f(player.getVelocity().x, player.getVelocity().y < 0 ? 0 : player.getVelocity().y));
+        }
+
+    }
+
+    if (!player.isFalling && player.getVelocity().y > 0) {
+        player.setVelocity(Vector2f(player.getVelocity().x, 0));
+    }
+
+    //gravity
+    if (player.isFalling) {
+        player.addVelocity(Vector2f(0, GRAVITY)*deltaTime.asSeconds());
+    }
+
+    //friction
+    if (player.getVelocity().x != 0) {
+        float friction = -player.getVelocity().x*0.4;
+        friction = abs(friction) < 0.1 ? -player.getVelocity().x: friction;
+        player.addVelocity(Vector2f(friction, 0));
+    }
+
+    //Player shooting
+    if (player.canAttack && !player.died) {
+        if (gameObjects.Projectiles.size() > 10) {
+            Projectile* t;
+            t = gameObjects.Projectiles.back();
+            gameObjects.Projectiles.pop_back();
+            delete t;
+        }
+
+        gameObjects.Projectiles.insert(gameObjects.Projectiles.begin(), player.shootAt(mousePos));
+    }
+
+    objects.push_back(ground.getObject());
+
+    //Updating projectiles
+    for (Projectile* p : gameObjects.Projectiles) {
+        if (p->destroyed) {
+            continue;
+        }
+        
+        p->update(deltaTime.asSeconds(),objects);
+    }
+
+    //Updating Enemies
+    for (Enemy* e : gameObjects.Enemies) {
+        if (e->died) {
+            continue;
+        }
+
+        if (e->getObject().getGlobalBounds().intersects(player.getObject().getGlobalBounds())) {
+            player.receiveDamage(e->attackPlayer());
+        }
+
+        e->canSeePlayer = FloatRect(mainCamera.getCenter() - mainCamera.getSize() / 2.f, mainCamera.getSize()).intersects(e->getObject().getGlobalBounds());
+
+        e->update(deltaTime.asSeconds(),gameObjects.Platforms,gameObjects.Projectiles,player.getObject().getGlobalBounds(),ground.getObject().getGlobalBounds(),pathFinder);
+
+    }
+    //Player died
+    if (player.died) {
+        player.setVelocity(Vector2f(0, player.getVelocity().y));
+        //player.setColor(Color::White);
+    }
+
+    player.updatePosition(player.getPosition() + player.getVelocity()*deltaTime.asSeconds());
+
+    //camera movements
+    if (player.getPosition().x >= mainCamera.getCenter().x && player.getVelocity().x > 0) {
+        if (mainCamera.getCenter().x < SCREEN_WIDTH - VIEW_WIDTH / 2) {
+            mainCamera.move(Vector2f(player.getVelocity().x * deltaTime.asSeconds(), 0));
+        }
+    }
+    else if (player.getPosition().x <= mainCamera.getCenter().x && player.getVelocity().x < 0) {
+        if (mainCamera.getCenter().x > VIEW_WIDTH / 2) {
+            mainCamera.move(Vector2f(player.getVelocity().x * deltaTime.asSeconds(), 0));
+        }
+    }
+
+    if (player.getPosition().x >= SCREEN_WIDTH * 0.9) {
+        player.updatePosition(Vector2f(SCREEN_WIDTH / 37, ground.getPosition().y - SCREEN_WIDTH / 56));
+        player.setVelocity(Vector2f(0, 0));
+        mainCamera.reset(FloatRect(0.f, SCREEN_HEIGHT - VIEW_HEIGHT, VIEW_WIDTH, VIEW_HEIGHT));
+        if (gameObjects.id != nextSceneObjects.id) {
+            gameObjects = nextSceneObjects;
+            sceneGenerator.generateNextScene();
+        }
+        /*if (!isInSceneTransition) {
+            cout << "Starting scene Generation" << endl;
+            isInSceneTransition = true;
+        }else if (!sceneGenerator.isGeneratingScene) {
+            cout << "Finished scene Generation" << endl;
+            
+            isInSceneTransition = false;
+        } */
+    }
+
+}
+
+void Game::render()
+{
+    window->clear();
+ 
+    window->draw(ground.getObject());
+    window->draw(player.getObject());
+
+    for (Platform p : gameObjects.Platforms) {
+        window->draw(p.getObject());
+    }
+
+    for (Projectile* p : gameObjects.Projectiles) {
+        if (p->destroyed) continue;
+        window->draw(p->getObject());
+    }
+    for (Enemy* e : gameObjects.Enemies) {
+        if (e->died) continue;
+        window->draw(e->getObject());
+    }
+
+    window->setView(mainCamera);
+
+    window->display();
+}
+
+bool Game::isRunning()
+{
+	return this->window->isOpen();
+}
+
 ```
 
-### views\partials\header.ejs
+### Z-Runner\Game.h
 ```
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>MedConnect</title>
-    <link
-      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
-      rel="stylesheet"
-    />
-    <link
-      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
-      rel="stylesheet"
-    />
-    <!-- Add SweetAlert2 CSS -->
-    <link
-      href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css"
-      rel="stylesheet"
-    />
-    <!-- Chatbot CSS -->
-    <link href="/css/chatbot-styles.css" rel="stylesheet" />
-    <style>
-      :root {
-        --primary-blue: #2a5c82;
-        --secondary-blue: #5c9baf;
-        --accent-teal: #4ecdc4;
-      }
+#pragma once
 
-      .dashboard-header {
-        background: var(--primary-blue);
-        color: white;
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        z-index: 1030;
-        height: 60px;
-      }
+#define SCREEN_WIDTH 1920.f
+#define SCREEN_HEIGHT 1080.f
 
-      .sidebar {
-        background: #f8f9fa;
-        position: fixed;
-        left: 0;
-        top: 60px;
-        bottom: 0;
-        width: 250px;
-        border-right: 1px solid #dee2e6;
-        overflow-y: auto;
-        z-index: 1020;
-        padding: 20px 0;
-      }
+#define GRAVITY 50
 
-      .main-content {
-        margin-left: 250px;
-        margin-top: 60px;
-        padding: 30px;
-        min-height: calc(100vh - 60px);
-      }
+#define VIEW_WIDTH 960.f
+#define VIEW_HEIGHT 540.f
 
-      .nav-link {
-        color: #333;
-        padding: 0.8rem 1.5rem;
-        margin: 0.2rem 1rem;
-        border-radius: 8px;
-        transition: all 0.3s ease;
-      }
+#include <SFML/Graphics.hpp>
+#include <SFML/Audio.hpp>
+#include <SFML/Window.hpp>
+#include <SFML/System.hpp>
+#include <SFML/Network.hpp>
 
-      .nav-link:hover {
-        background: var(--accent-teal);
-        color: white !important;
-      }
+#include <vector>
+#include <unordered_map>
+#include <filesystem>
 
-      .nav-link.active {
-        background: var(--primary-blue);
-        color: white !important;
-      }
+#include "Enemy.h"
+#include "Platform.h"
+#include "Player.h"
+#include "Projectile.h"
 
-      .welcome-card {
-        background: linear-gradient(
-          135deg,
-          var(--secondary-blue),
-          var(--accent-teal)
-        );
-        color: white;
-        border-radius: 15px;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-      }
+#include "SceneGenerator.h"
 
-      .card {
-        border: none;
-        border-radius: 15px;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        transition: transform 0.3s ease;
-      }
+#include "PathFinder.h"
+#include <filesystem>
 
-      .card:hover {
-        transform: translateY(-5px);
-      }
-    </style>
-  </head>
-  <body>
-    <!-- Fixed Header -->
-    <header class="dashboard-header py-2">
-      <div class="container-fluid">
-        <div class="d-flex justify-content-between align-items-center">
-          <div class="d-flex align-items-center">
-            <i class="fas fa-hospital me-3 fs-4"></i>
-            <h4 class="mb-0">MedConnect</h4>
-          </div>
-          <div class="d-flex align-items-center">
-            <span class="me-3">Welcome, <%= user.fullName %></span>
-            <a href="/logout" class="btn btn-outline-light btn-sm">Logout</a>
-          </div>
-        </div>
-      </div>
-    </header>
+using namespace sf;
+using namespace std;
+using namespace filesystem;
 
-    <!-- Fixed Sidebar -->
-    <div class="sidebar">
-      <nav class="nav flex-column">
-        <a
-          href="/patient/dashboard"
-          class="nav-link <%= locals.path === '/patient/dashboard' ? 'active' : '' %>"
-        >
-          <i class="fas fa-home me-2"></i> Dashboard
-        </a>
-        <a
-          href="#"
-          class="nav-link <%= locals.path === '/patient/appointments' ? 'active' : '' %>"
-        >
-          <i class="fas fa-calendar me-2"></i> Appointments
-        </a>
-        <a
-          href="/patient/medical-records"
-          class="nav-link <%= locals.path === '/patient/medical-records' ? 'active' : '' %>"
-        >
-          <i class="fas fa-file-medical me-2"></i> Medical Records
-        </a>
-        <a
-          href="/baseline-screening"
-          class="nav-link <%= locals.path === '/patient/baseline-screening' ? 'active' : '' %>"
-        >
-          <i class="fas fa-clipboard-check me-2"></i> Health Screening
-        </a>
-        <a
-          href="#"
-          class="nav-link <%= locals.path === '/patient/messages' ? 'active' : '' %>"
-        >
-          <i class="fas fa-comments me-2"></i> Messages
-        </a>
-        <a
-          href="#"
-          class="nav-link <%= locals.path === '/patient/navigator' ? 'active' : '' %>"
-        >
-          <i class="fas fa-user-md me-2"></i> My Navigator
-        </a>
-      </nav>
-    </div>
+//typedef struct GameObjects {
+//	vector<Enemy> Enemies;
+//	vector<Obstacle> Obstacles; 
+//	vector<Platform> Platforms;
+//	vector<Projectile*> Projectiles;
+//} GameObjects;
 
-    <!-- Main Content Container -->
-    <main class="main-content">
-  </body>
-</html>
+class Game
+{
+
+private :
+	RenderWindow* window;
+	VideoMode videoMode;
+	Event event;
+	int pressedKey = -1;
+	Clock clock;
+	Time deltaTime;
+
+	Player player;
+	Platform ground;
+	GameObjects gameObjects;
+	unordered_map<string,unordered_map<string,vector<Texture*>>> Textures;
+
+	SceneGenerator sceneGenerator;
+
+	bool isInSceneTransition=false;
+
+	View mainCamera;
+
+	void loadTexture();
+
+	void initializeVariables();
+	void initializeWindow();
+
+	vector<vector<PathFindingNode>> grid;
+	PathFinder pathFinder;
+public :
+	GameObjects nextSceneObjects;
+	Game();
+	virtual ~Game();
+
+	void eventHandler();
+	void update();
+	void render();
+
+	bool isRunning();
+
+	friend class SceneGenerator;
+};
+
 
 ```
 
-### views\partials\sidebar.ejs
+### Z-Runner\Object.cpp
 ```
-<% if (user.role === 'patient') { %>
-<li class="nav-item">
-  <a
-    href="/patient/dashboard"
-    class="nav-link <%= locals.path === '/patient/dashboard' ? 'active' : '' %>"
-  >
-    <i class="fas fa-tachometer-alt me-2"></i>
-    Dashboard
-  </a>
-</li>
-<li class="nav-item">
-  <a
-    href="/patient/medical-records"
-    class="nav-link <%= locals.path === '/patient/medical-records' ? 'active' : '' %>"
-  >
-    <i class="fas fa-file-medical me-2"></i>
-    Medical Records
-  </a>
-</li>
-<li class="nav-item">
-  <a
-    href="/baseline-screening"
-    class="nav-link <%= locals.path === '/patient/baseline-screening' ? 'active' : '' %>"
-  >
-    <i class="fas fa-clipboard-check me-2"></i>
-    Health Screening
-  </a>
-</li>
-<% } %>
+#include "Object.h"
+
+Sprite Object::getObject()
+{
+    return self;
+}
+
+```
+
+### Z-Runner\Object.h
+```
+#pragma once
+
+#include <SFML/Graphics/Sprite.hpp>
+#include <SFML/Graphics/Texture.hpp>
+
+#include <iostream>
+
+using namespace std;
+using namespace sf;
+
+class Object
+{
+protected:
+	Sprite self;
+public:
+	Sprite getObject();
+};
+
+
+```
+
+### Z-Runner\PathFinder.cpp
+```
+#include "PathFinder.h"
+#include <algorithm> // for min_element, remove
+#include <cmath> // for abs
+
+float PathFinder::heuristic(const PathFindingNode& a, const PathFindingNode& b)
+{
+    return std::abs(a.x - b.x) + std::abs(a.y - b.y); // Manhattan distance
+}
+
+bool PathFinder::canMoveToPosition(int x, int y, int enemyWidth, int enemyHeight)
+{
+    for (int i = 0; i < enemyWidth; ++i) {
+        for (int j = 0; j < enemyHeight; ++j) {
+            int checkX = x + i;
+            int checkY = y + j;
+            if (checkX < 0 || checkX >= screenHeight || checkY < 0 || checkY >= screenHeight || !grid[checkX][checkY].walkable) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+PathFinder::PathFinder(int screenWidth, int screenHeight)
+{
+    this->screenWidth = screenWidth;
+    this->screenHeight = screenHeight; // Fixed assignment for screenHeight
+}
+
+std::vector<PathFindingNode*> PathFinder::findPath(PathFindingNode& startNode, PathFindingNode& targetNode, int enemyWidth, int enemyHeight, int jumpHeight, int jumpWidth, int fallDistance)
+{
+    std::vector<PathFindingNode*> openSet;
+    std::vector<PathFindingNode*> closedSet;
+
+    openSet.push_back(&startNode);
+
+    while (!openSet.empty()) {
+        auto currentNode = *std::min_element(openSet.begin(), openSet.end(), [](PathFindingNode* a, PathFindingNode* b) { return a->getFCost() < b->getFCost(); });
+
+        if (*currentNode == targetNode) {
+            std::vector<PathFindingNode*> path;
+            while (currentNode != &startNode) {
+                path.push_back(currentNode);
+                currentNode = currentNode->parent;
+            }
+            std::reverse(path.begin(), path.end());
+            return path;
+        }
+
+        openSet.erase(std::remove(openSet.begin(), openSet.end(), currentNode), openSet.end());
+        closedSet.push_back(currentNode);
+
+        std::vector<PathFindingNode*> neighbors;
+
+        // Check left and right movements
+        if (currentNode->x > 0 && canMoveToPosition(currentNode->x - 1, currentNode->y, enemyWidth, enemyHeight)) neighbors.push_back(&grid[currentNode->x - 1][currentNode->y]); // Left
+        if (currentNode->x < screenWidth - 1 && canMoveToPosition(currentNode->x + 1, currentNode->y, enemyWidth, enemyHeight)) neighbors.push_back(&grid[currentNode->x + 1][currentNode->y]); // Right
+
+        // Check for jumps within the max jump height and width
+        for (int dx = -jumpWidth; dx <= jumpWidth; dx++) {
+            for (int dy = 1; dy <= jumpHeight; dy++) {
+                int nx = currentNode->x + dx;
+                int ny = currentNode->y - dy; // Adjust y-axis for SFML coordinate system (decrement)
+                if (nx >= 0 && nx < screenWidth && ny >= 0 && ny < screenHeight && canMoveToPosition(nx, ny, enemyWidth, enemyHeight)) {
+                    neighbors.push_back(&grid[nx][ny]); // Jump
+                }
+            }
+        }
+
+        // Check for falls within the max fall distance
+        for (int dy = 1; dy <= fallDistance; dy++) {
+            int ny = currentNode->y + dy;
+            if (ny < screenHeight && canMoveToPosition(currentNode->x, ny, enemyWidth, enemyHeight)) {
+                neighbors.push_back(&grid[currentNode->x][ny]); // Fall
+            }
+        }
+
+        for (auto neighbor : neighbors) {
+            if (!neighbor->walkable || std::find(closedSet.begin(), closedSet.end(), neighbor) != closedSet.end()) continue;
+
+            float newGCost = currentNode->gCost + heuristic(*currentNode, *neighbor);
+            if (newGCost < neighbor->gCost || std::find(openSet.begin(), openSet.end(), neighbor) == openSet.end()) {
+                neighbor->gCost = newGCost;
+                neighbor->hCost = heuristic(*neighbor, targetNode);
+                neighbor->parent = currentNode;
+
+                if (std::find(openSet.begin(), openSet.end(), neighbor) == openSet.end()) {
+                    openSet.push_back(neighbor);
+                }
+            }
+        }
+    }
+
+    return std::vector<PathFindingNode*>(); // Return an empty path if no path is found
+}
+
+void PathFinder::setGrid(std::vector<std::vector<PathFindingNode>>& grid)
+{
+    this->grid = grid;
+}
+
+```
+
+### Z-Runner\PathFinder.h
+```
+#pragma once
+
+#include <vector>
+#include <algorithm>
+#include <iostream>
+#include "PathFindingNode.h"
+
+using namespace std;
+class PathFinder
+{
+private:
+	int screenWidth;
+	int screenHeight;
+	vector<vector<PathFindingNode>> grid;
+
+	float heuristic(const PathFindingNode& a, const PathFindingNode& b);
+	bool canMoveToPosition(int x, int y, int enemyWidth, int enemyHeight);
+public:
+	PathFinder(int screenWidth,int screenHeight);
+
+	vector<PathFindingNode*> findPath(PathFindingNode& startNode, PathFindingNode& targetNode, int enemyWidth, int enemyHeight, int jumpHeight, int jumpWidth, int fallDistance);
+
+	void setGrid(vector<vector<PathFindingNode>>& grid);
+};
+
+
+```
+
+### Z-Runner\PathFindingNode.cpp
+```
+#include "PathFindingNode.h"
+
+PathFindingNode::PathFindingNode(int x, int y, bool walkable) : x(x), y(y), walkable(walkable), gCost(0), hCost(0), parent(nullptr) {}
+
+
+float PathFindingNode::getFCost() const
+{
+    return gCost + hCost;
+}
+
+bool PathFindingNode::operator==(const PathFindingNode& other) const
+{
+	return x == other.x && y == other.y;
+}
+
+```
+
+### Z-Runner\PathFindingNode.h
+```
+#pragma once
+class PathFindingNode
+{
+public :
+    int x, y;
+    bool walkable;
+    float gCost, hCost;
+    PathFindingNode* parent;
+
+    PathFindingNode(int x, int y, bool walkable);
+
+    float getFCost() const;
+
+    bool operator==(const PathFindingNode& other) const;
+};
+
+
+```
+
+### Z-Runner\Platform.cpp
+```
+#include "Platform.h"
+Platform::Platform()
+{
+}
+void Platform::initialize(float width,float height,float x,float y,Color color,bool isPassThrough)
+{
+	shape.setFillColor(color);
+	shape.setSize(Vector2f(width, height));
+	shape.setPosition(x, y);
+	shape.setOutlineColor(Color::Transparent);
+	shape.setOutlineThickness(1.f);
+	shape.setOutlineColor(Color::Transparent);
+
+	this->ispassThrough = isPassThrough;
+}
+
+void Platform::updateColor(Color color)
+{
+}
+
+void Platform::updateSize(int width, int height)
+{
+}
+
+void Platform::updatePosition(float x, float y) {
+	shape.setPosition(x, y);
+}
+Vector2f Platform::getPosition()
+{
+	return shape.getPosition();
+}
+RectangleShape Platform::getBoundaryObject() {
+	return bounds;
+}
+RectangleShape Platform::getObject()
+{
+	return shape;
+}
+
+```
+
+### Z-Runner\Platform.h
+```
+#pragma once
+
+#include <SFML/Graphics/RectangleShape.hpp>
+
+using namespace sf;
+
+class Platform
+{
+private:
+	RectangleShape shape,bounds;
+
+public :
+	bool ispassThrough;
+
+	Platform();
+	void initialize(float width,float height,float x,float y, Color color,bool isPassThrough);
+
+	void updateColor(Color color);
+	void updateSize(int width, int height);
+	void updatePosition(float x, float y);
+
+	Vector2f getPosition();
+	RectangleShape getObject();
+	RectangleShape getBoundaryObject();
+};
+
+
+```
+
+### Z-Runner\Player.cpp
+```
+#include "Player.h"
+
+Player::Player()
+{
+	attackingTimer = nullptr;
+}
+
+void Player::initialize(float width, float height, float x, float y, unordered_map<string, vector<Texture*>>& texture)
+{
+	self.setPosition(x, y);
+
+	this->textures = texture;
+	self.setTexture(*texture["idle"][0]);
+
+	size = Vector2f(width, height);
+	updateSize(size);
+
+	attackingTimer = nullptr;
+	attackRate = 2;
+}
+
+
+Projectile* Player::shootAt(Vector2f target)
+{
+	delete attackingTimer;
+	canAttack = false;
+	attackingTimer =new Thread(bind( & Player::refreshAttack, this));
+	attackingTimer->launch();
+
+	target -= self.getPosition();
+	target = target*(BULLET_SPEED/sqrtf(target.x * target.x + target.y * target.y)) ;
+	return new Projectile(10, target, Vector2f(5, 2),self.getPosition(), Color::Yellow,false);
+}
+
+```
+
+### Z-Runner\Player.h
+```
+#pragma once
+
+#define BULLET_SPEED 250
+
+#define MOVEMENT_SPEED 100
+#define JUMP_HEIGHT 100
+
+#include<iostream>
+#include <functional>
+
+#include "Projectile.h"
+
+#include "Character.h"
+
+class Player : public Character
+{
+private:
+	vector<RectangleShape> gunShots;
+
+public:
+
+	Player();
+	void initialize(float width, float height, float x, float y, unordered_map<string, vector<Texture*>>& texture);
+
+	Projectile* shootAt(Vector2f target);
+
+};
+
+
+```
+
+### Z-Runner\Projectile.cpp
+```
+#include "Projectile.h"
+
+Projectile::Projectile(float damage, Vector2f velocity, Vector2f size,Vector2f init, Color color,bool isHostile)
+{
+	this->damage = damage;
+	this->velocity = velocity;
+	this->isHostile = isHostile;
+	projectile.setSize(size);
+	projectile.setFillColor(color);
+	projectile.setPosition(init);
+
+	updateThread = nullptr;
+}
+
+void Projectile::update(float deltaTime, vector<RectangleShape> shapes)
+{
+	if (destroyed) {
+		return;
+	}
+	projectile.setPosition(projectile.getPosition()+velocity * deltaTime);
+	projectile.setRotation(atan2f(velocity.y, velocity.x) * 57.3f);
+	delete updateThread;
+	updateThread = new Thread(bind(&Projectile::checkForCollision, this, shapes));
+	updateThread->launch();
+}
+void Projectile::checkForCollision(vector<RectangleShape> shapes)
+{
+	for (const RectangleShape& shape : shapes) {
+		float rect1[4] = { projectile.getPosition().x,projectile.getPosition().y,projectile.getSize().x,projectile.getSize().y };
+		rect1[2] += rect1[0];
+		rect1[3] += rect1[1];
+
+		float rect2[4] = { shape.getPosition().x,shape.getPosition().y,shape.getSize().x,shape.getSize().y };
+		rect1[2] += rect1[0];
+		rect1[3] += rect1[1];
+		if (projectile.getGlobalBounds().intersects(shape.getGlobalBounds()) || (rect1[0] > rect2[0] && rect1[0]<rect2[2] && rect1[1]>rect2[1] && rect1[1] < rect2[3])) {
+			destruct();
+		}
+	}
+	
+}
+
+void Projectile::destruct()
+{
+	destroyed = true;
+	velocity=Vector2f(0,0);
+}
+
+float Projectile::getDamage()
+{
+	return damage;
+}
+
+RectangleShape Projectile::getObject()
+{
+	return projectile;
+}
+
+```
+
+### Z-Runner\Projectile.h
+```
+#pragma once
+
+#include <SFML/Graphics/RectangleShape.hpp>
+#include <SFML/System/Thread.hpp>
+#include <iostream>
+#include <functional>
+#include <vector>
+
+using namespace sf;
+using namespace std;
+
+class Projectile
+{
+private:
+	float damage;
+	Vector2f velocity;
+	RectangleShape projectile;
+	Thread* updateThread;
+
+public:
+	Projectile(float damage, Vector2f velocity, Vector2f size,Vector2f init, Color color,bool isHostile);
+	bool destroyed = false;
+	bool isHostile = false;
+
+	void update(float deltaTime , vector<RectangleShape> shapes);
+	void checkForCollision(vector<RectangleShape> shapes);
+	
+	void destruct();
+	float getDamage();
+
+	RectangleShape getObject();
+};
+
+
+```
+
+### Z-Runner\SceneGenerator.cpp
+```
+#include "SceneGenerator.h"
+
+void SceneGenerator::generateScene()
+{
+	isGeneratingScene = true;
+
+	srand(time(NULL));
+	SceneTypes sceneType = static_cast<SceneTypes>(rand() % END);
+
+	if (sceneType == Plain||true) {
+		for (int i = 0; i < (10 + rand() % 5); i++) {
+			gameObjects.Enemies.push_back(new Enemy(50,  fmod(rand(), (screenWidth * 0.8)) + screenWidth * 0.1, baseLine-20, Textures["zombie"]));
+		}
+	}
+	else if (sceneType == Normal) {
+
+	}
+
+	gameObjects.id = gameObjects.id + 1;
+
+	isGeneratingScene = false;
+}
+
+SceneGenerator::SceneGenerator(GameObjects& gameObjects,int baseLine, float screenWidth, float screenHeight):gameObjects(gameObjects)
+{
+	this->baseLine = baseLine;
+	this -> screenWidth = screenWidth;
+	this -> screenHeight = screenHeight;
+
+
+	generatorThread = nullptr;
+}
+
+void SceneGenerator::setTextures(unordered_map<string, unordered_map<string, vector<Texture*>>>& textures)
+{
+	this->Textures = textures;
+}
+
+void SceneGenerator::generateNextScene()
+{
+	if (isGeneratingScene) return;
+	delete generatorThread;
+	generatorThread = new Thread(&SceneGenerator::generateScene, this);
+	generatorThread->launch();
+}
+
+
+
+```
+
+### Z-Runner\SceneGenerator.h
+```
+#pragma once
+
+#include <stdlib.h>
+#include <time.h>
+#include <vector>
+
+#include <SFML/System/Thread.hpp>
+
+#include "Enemy.h"
+#include "Platform.h"
+#include "Player.h"
+#include "Projectile.h"
+
+using namespace std;
+
+enum SceneTypes {
+	Normal,
+	Parkour,
+	ParkourWithZombies,
+	Plain,
+	BossArena,
+	END
+};
+
+typedef struct GameObjects {
+	vector<Enemy*> Enemies;
+	vector<Platform> Platforms;
+	vector<Projectile*> Projectiles;
+	int id=0;
+} GameObjects;
+		
+class SceneGenerator
+{
+private :
+
+	Thread* generatorThread;
+	unordered_map<string, unordered_map<string, vector<Texture*>>> Textures;
+
+	int baseLine;
+	float screenWidth;
+	float screenHeight;
+
+	void generateScene();
+public :
+	GameObjects& gameObjects;
+	bool isGeneratingScene;
+	SceneGenerator(GameObjects& gameObjects, int baseLine, float screenWidth, float screenHeight);
+	void setTextures(unordered_map<string, unordered_map<string, vector<Texture*>>>& textures);
+	void generateNextScene();
+};
+
+
+```
+
+### Z-Runner\Z-Runner.cpp
+```
+#include <iostream>
+#include "Game.h"
+
+using namespace sf;
+
+int main()
+{
+    Game game;
+
+    while (game.isRunning()) {
+        game.update();
+        game.render();
+    }
+    return 0;
+}
+
+```
+
+### Z-Runner\Z-Runner.vcxproj
+```
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>17.0</VCProjectVersion>
+    <Keyword>Win32Proj</Keyword>
+    <ProjectGuid>{01e5ab7e-5623-4563-b714-406831ea844d}</ProjectGuid>
+    <RootNamespace>ZRunner</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="Shared">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>C:\Projects\S2_OOPs_Assignment\Z-Runner\External\include</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>C:\Projects\S2_OOPs_Assignment\Z-Runner\External\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>sfml-system-d.lib;sfml-graphics-d.lib;sfml-window-d.lib;sfml-audio-d.lib;sfml-network-d.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>C:\Projects\S2_OOPs_Assignment\Z-Runner\External\include</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>C:\Projects\S2_OOPs_Assignment\Z-Runner\External\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>sfml-system.lib;sfml-graphics.lib;sfml-window.lib;sfml-audio.lib;sfml-network.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>C:\Projects\S2_OOPs_Assignment\Z-Runner\External\include</AdditionalIncludeDirectories>
+      <AdditionalUsingDirectories>
+      </AdditionalUsingDirectories>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>C:\Projects\S2_OOPs_Assignment\Z-Runner\External\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>sfml-system-d.lib;sfml-graphics-d.lib;sfml-window-d.lib;sfml-audio-d.lib;sfml-network-d.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>C:\Projects\S2_OOPs_Assignment\Z-Runner\External\include</AdditionalIncludeDirectories>
+      <AdditionalUsingDirectories>
+      </AdditionalUsingDirectories>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>C:\Projects\S2_OOPs_Assignment\Z-Runner\External\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>sfml-system.lib;sfml-graphics.lib;sfml-window.lib;sfml-audio.lib;sfml-network.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="Character.cpp" />
+    <ClCompile Include="Enemy.cpp" />
+    <ClCompile Include="Game.cpp" />
+    <ClCompile Include="Object.cpp" />
+    <ClCompile Include="PathFinder.cpp" />
+    <ClCompile Include="PathFindingNode.cpp" />
+    <ClCompile Include="Platform.cpp" />
+    <ClCompile Include="Player.cpp" />
+    <ClCompile Include="Projectile.cpp" />
+    <ClCompile Include="SceneGenerator.cpp" />
+    <ClCompile Include="Z-Runner.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Character.h" />
+    <ClInclude Include="Enemy.h" />
+    <ClInclude Include="Game.h" />
+    <ClInclude Include="Object.h" />
+    <ClInclude Include="PathFinder.h" />
+    <ClInclude Include="PathFindingNode.h" />
+    <ClInclude Include="Platform.h" />
+    <ClInclude Include="Player.h" />
+    <ClInclude Include="Projectile.h" />
+    <ClInclude Include="SceneGenerator.h" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>
+```
+
+### Z-Runner\Z-Runner.vcxproj.filters
+```
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Z-Runner.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Game.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Enemy.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Platform.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Player.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Projectile.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="SceneGenerator.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="PathFinder.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="PathFindingNode.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Object.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Character.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Game.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Enemy.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Platform.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Player.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Projectile.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SceneGenerator.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="PathFinder.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="PathFindingNode.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Object.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Character.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>
+```
+
+### Z-Runner\Z-Runner.vcxproj.user
+```
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
+  </PropertyGroup>
+  <PropertyGroup>
+    <ShowAllFiles>false</ShowAllFiles>
+  </PropertyGroup>
+</Project>
+```
+
+### Z-Runner.sln
+```
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.10.35013.160
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Z-Runner", "Z-Runner\Z-Runner.vcxproj", "{01E5AB7E-5623-4563-B714-406831EA844D}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+		Debug|x86 = Debug|x86
+		Release|x64 = Release|x64
+		Release|x86 = Release|x86
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{01E5AB7E-5623-4563-B714-406831EA844D}.Debug|x64.ActiveCfg = Debug|x64
+		{01E5AB7E-5623-4563-B714-406831EA844D}.Debug|x64.Build.0 = Debug|x64
+		{01E5AB7E-5623-4563-B714-406831EA844D}.Debug|x86.ActiveCfg = Debug|Win32
+		{01E5AB7E-5623-4563-B714-406831EA844D}.Debug|x86.Build.0 = Debug|Win32
+		{01E5AB7E-5623-4563-B714-406831EA844D}.Release|x64.ActiveCfg = Release|x64
+		{01E5AB7E-5623-4563-B714-406831EA844D}.Release|x64.Build.0 = Release|x64
+		{01E5AB7E-5623-4563-B714-406831EA844D}.Release|x86.ActiveCfg = Release|Win32
+		{01E5AB7E-5623-4563-B714-406831EA844D}.Release|x86.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {82180E5A-CD01-432C-A599-F8A5B67676D8}
+	EndGlobalSection
+EndGlobal
 
 ```
 
