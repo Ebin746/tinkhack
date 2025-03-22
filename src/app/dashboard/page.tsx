@@ -4,7 +4,7 @@ import RepoInput from "@/components/RepoInput";
 import AnalysisResult from "@/components/AnalysisResult";
 import Chatbot from "@/components/Chatbot";
 import Summarizer from "@/components/Summarizer";
-
+import FileTreeRenderer from "@/components/FileStructure";
 export default function Dashboard() {
   const [isChatbotOpen, setIsChatbotOpen] = useState(false);
 
@@ -22,6 +22,7 @@ export default function Dashboard() {
       </p>
       <div className="space-y-12">
         <RepoInput />
+        <FileTreeRenderer/>
         <AnalysisResult />
         <Summarizer />
       </div>
