@@ -10,9 +10,8 @@ export async function POST(req: Request) {
     try {
       requestData = await req.json();
     } catch {
-      requestData = {} ;
+      requestData = {};
     }
-    // If no level is passed, default to high-level
     const level = requestData.level || "high";
 
     // Define directory and file path
@@ -27,9 +26,32 @@ export async function POST(req: Request) {
     // Read file content
     const content = fs.readFileSync(readmeFilePath, "utf8");
 
+    // Step 1: Chunk the content
+    const chunkSize = 1000; // ~250-350 words, adjust based on content
+    const chunks = [];
+    for (let i = 0; i < content.length; i += chunkSize) {
+      chunks.push(content.slice(i, i + chunkSize));
+    }
+
+    // Step 2: Retrieve relevant chunks (RAG - keyword-based)
+    const relevantKeywords = [
+      "import", "class", "function", "extends", "implements", "require", "module",
+      "file", "dependency", "call", "relationship", "subgraph", "node"
+    ];
+    const relevantChunks = chunks.filter(chunk =>
+      relevantKeywords.some(keyword => chunk.toLowerCase().includes(keyword))
+    );
+
+    // Combine and limit retrieved content
+    const maxInputLength = 5000; // Adjust based on Gemini token limit
+    let combinedContent = relevantChunks.join("\n").slice(0, maxInputLength);
+    if (!combinedContent) {
+      combinedContent = content.slice(0, maxInputLength); // Fallback to truncated full content
+    }
     // Define prompt based on level option
     let prompt = "";
-
+    console.log(content.toString().length)
+console.log(combinedContent.toString().length)
       prompt = `
 Analyze the following codebase and generate a Mermaid.js diagram in **graph TD** syntax.
 
@@ -97,7 +119,7 @@ Analyze the following codebase and generate a Mermaid.js diagram in **graph TD**
       classDef md fill:#F0E68C,stroke:#333,stroke-width:2px;
 
   ### Codebase:
-  "${content}"
+  "${combinedContent}"
 
   ### Important:
   - Output only from 'graph TD' onwards, without additional explanations.
