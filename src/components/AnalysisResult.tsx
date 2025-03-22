@@ -11,7 +11,7 @@ export default function AnalysisResult() {
     setError("");
 
     try {
-      const response = await fetch("/api/gemini", {
+      const response = await fetch("/api/diagram", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
       });

@@ -17,30 +17,27 @@ export async function POST(req: Request) {
        const content = fs.readFileSync(readmeFilePath, "utf8");
 
        // Improved prompt structure
-       const prompt = `
-Analyze the following codebase and generate a Mermaid.js diagram in graph TD syntax.  
-Extract class structures, properties, methods, and inheritance relationships if available.  
-If no TypeScript/JavaScript classes are found, generate a minimal placeholder structure.  
-Output only from graph TD, without additional explanations.  
 
-Codebase:  
-"""  
-${content}  
-"""
-
-Ensure the output is **pure Mermaid.js graph TD syntax** without additional explanations.
-`;
-
+      // Improved summarization prompt
+      const prompt = `
+      Summarize the following codebase into simple, human-readable points:
+      - Key functionalities
+      - Core technologies used
+      - High-level structure
+      
+      Codebase:
+      """
+      ${content}
+      """
+      Provide a **concise summary** optimized for developers and non-technical users.
+      `;
        
-       
-       
-
     try {
         const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY as string);
 const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
         const result = await model.generateContent(prompt);
         const reply = result.response.text();
-        return NextResponse.json({  analysis:reply })
+        return NextResponse.json({  summary:reply })
     } catch (error) {
         console.error("Error:", error);
         return NextResponse.json(
