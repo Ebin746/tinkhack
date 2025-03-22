@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 
-export default function RepoInput({ onAnalyze }: { onAnalyze: (repoName: string) => void }) {
+export default function RepoInput() {
   const [repoUrl, setRepoUrl] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -18,12 +18,6 @@ export default function RepoInput({ onAnalyze }: { onAnalyze: (repoName: string)
         headers: { "Content-Type": "application/json" },
       });
 
-      const data = await response.json();
-      if (response.ok) {
-        onAnalyze(data.repoName);
-      } else {
-        setError(data.error || "Failed to fetch repository.");
-      }
     } catch (err) {
       setError("Something went wrong.");
     } finally {

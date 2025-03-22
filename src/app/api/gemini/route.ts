@@ -18,16 +18,19 @@ export async function POST(req: Request) {
 
        // Improved prompt structure
        const prompt = `
-       Analyze the given codebase and generate only a Mermaid.js class diagram representing its structure. 
-       Ensure that the diagram accurately reflects the classes, their attributes, methods, and relationships.
-       
-       Codebase:
-       """
-       ${content}
-       """
-       
-       Output should strictly be in Mermaid.js syntax without any additional explanations or text.
-       `;
+Analyze the following codebase and generate a Mermaid.js diagram in graph TD syntax.  
+Extract class structures, properties, methods, and inheritance relationships if available.  
+If no TypeScript/JavaScript classes are found, generate a minimal placeholder structure.  
+Output only from graph TD, without additional explanations.  
+
+Codebase:  
+"""  
+${content}  
+"""
+
+Ensure the output is **pure Mermaid.js graph TD syntax** without additional explanations.
+`;
+
        
        
        

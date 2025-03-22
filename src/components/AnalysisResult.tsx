@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 
-export default function AnalysisResult({ repoName }: { repoName: string }) {
+export default function AnalysisResult() {
   const [analysis, setAnalysis] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -13,7 +13,6 @@ export default function AnalysisResult({ repoName }: { repoName: string }) {
     try {
       const response = await fetch("/api/gemini", {
         method: "POST",
-        body: JSON.stringify({ repoName }),
         headers: { "Content-Type": "application/json" },
       });
 
