@@ -2,7 +2,7 @@
 import { useState } from "react";
 import RepoInput from "@/components/RepoInput";
 import AnalysisResult from "@/components/AnalysisResult";
-import Chatbot from "@/components/Chatbot";
+import FileTreeRenderer from "@/components/FileStructure";
 import Summarizer from "@/components/Summarizer";
 
 export default function Home() {
@@ -16,7 +16,7 @@ export default function Home() {
       <RepoInput  />
 
      <AnalysisResult />
-     <Chatbot/>
+     <FileTreeRenderer/>
      <Summarizer/>
 
 
