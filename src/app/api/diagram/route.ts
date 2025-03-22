@@ -18,17 +18,13 @@ export async function POST(req: Request) {
 
   // Improved prompt structure
   const prompt = `
-Analyze the following codebase and generate a Mermaid.js diagram in graph TD syntax.  
-Extract class structures, properties, methods, and inheritance relationships if available.  
-If no TypeScript/JavaScript classes are found, generate a minimal placeholder structure.  
-Output only from graph TD, without additional explanations.  
-
+Analyze the following codebase and generate a mermaid code for diplaying graph with icons
 Codebase:  
 """  
 ${content}  
 """
 
-Ensure the output is **pure Mermaid.js graph TD syntax** without additional explanations.
+Ensure the output is **pure Mermaid.js graph TD syntax** without additional explanations. there is no need of / and \ and use [ ] not ()
 `;
   try {
     const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY as string);
