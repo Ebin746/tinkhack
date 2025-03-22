@@ -16,7 +16,7 @@ const excludeList = [
     "public", "assets", "static", "favicon.ico", "logo192.png", "logo512.png",
     ".github", ".gitlab", ".circleci", ".husky", "jest.config.js", "jest.setup.js",
     ".vscode", ".idea", ".project", ".settings", ".classpath", ".factorypath",
-    ".git", ".gitignore"
+    ".git", ".gitignore,.vscode"
 ];
 
 const excludeExtensions = [
