@@ -1,16 +1,25 @@
 "use client";
-import { useState } from "react";
+import { useState,useEffect} from "react";
 
 export default function Summarizer() {
     const [summary, setSummary] = useState("");
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
-
+const [role, setRole] = useState("outsider");
+   
+  
+    // Retrieve role from localStorage on component mount
+    useEffect(() => {
+      const storedRole = localStorage.getItem("userRole");
+      if (storedRole) {
+        setRole(storedRole);
+      }
+    }, []);
     const fetchSummary = async () => {
         setLoading(true);
         setError("");
         try {
-            const response = await fetch("/api/summarizer", { method: "POST" });
+            const response = await fetch("/api/summarizer", { method: "POST", body: JSON.stringify({role}), },);
             const data = await response.json();
             setSummary(data.summary);
         } catch (err) {
@@ -22,7 +31,7 @@ export default function Summarizer() {
 
     return (
         <div className="p-6 border rounded-lg shadow-lg bg-white mt-6 max-w-3xl mx-auto">
-            <h2 className="text-2xl font-semibold text-gray-800 mb-4">Project Summary</h2>
+            <h2 className="text-2xl font-semibold text-gray-800 mb-4">Project Summary for {role}</h2>
             <p className="text-gray-600 mb-4">
                 Click the button below to generate a summary of the project.
             </p>

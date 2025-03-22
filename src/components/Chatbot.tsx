@@ -1,10 +1,19 @@
 "use client";
-import { useState } from "react";
+import { useState,useEffect } from "react";
 
 export default function Chatbot() {
     const [messages, setMessages] = useState<{ role: string; content: string }[]>([]);
     const [input, setInput] = useState("");
-
+    const [role, setRole] = useState("outsider");
+   
+  
+    // Retrieve role from localStorage on component mount
+    useEffect(() => {
+      const storedRole = localStorage.getItem("userRole");
+      if (storedRole) {
+        setRole(storedRole);
+      }
+    }, []);
     const sendMessage = async () => {
         if (!input.trim()) return;
 
@@ -24,7 +33,7 @@ export default function Chatbot() {
 
     return (
         <div className="p-6 border rounded-lg shadow-lg bg-white mt-6 max-w-3xl mx-auto">
-            <h2 className="text-2xl font-semibold text-gray-800 mb-4">Chatbot</h2>
+            <h2 className="text-2xl font-semibold text-gray-800 mb-4">Chatbot for {role}</h2>
             <div className="h-60 overflow-y-auto p-4 border rounded-lg bg-gray-50">
                 {messages.map((msg, index) => (
                     <div

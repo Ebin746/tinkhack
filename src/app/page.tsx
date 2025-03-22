@@ -1,24 +1,71 @@
 "use client";
-import RepoInput from "@/components/RepoInput";
-import AnalysisResult from "@/components/AnalysisResult";
-import Chatbot from "@/components/Chatbot";
-import Summarizer from "@/components/Summarizer";
 
-export default function Home() {
-  return (
-    <main className="container mx-auto p-8 bg-white text-black min-h-screen">
-      <h1 className="text-4xl font-extrabold text-center mb-8 text-gray-800">
-        GitHub Codebase Analyzer
-      </h1>
-      <p className="text-lg text-center text-gray-600 mb-12">
-        Analyze your GitHub repositories, generate insights, and interact with an AI-powered chatbot for assistance.
-      </p>
-      <div className="space-y-12">
-        <RepoInput />
-        <AnalysisResult />
-        <Chatbot />
-        <Summarizer />
-      </div>
-    </main>
-  );
+import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+
+const roles = ['enthusiast', 'coder', 'architect', 'outsider'];
+
+interface RoleSelectorProps {
+  onSelect?: (role: string) => void; // Make it optional if needed
 }
+
+const RoleSelector: React.FC<RoleSelectorProps> = ({ onSelect }) => {
+  const [selectedRole, setSelectedRole] = useState('');
+  const router = useRouter();
+
+  // Load saved role from localStorage on component mount
+  useEffect(() => {
+    const savedRole = localStorage.getItem('userRole');
+    if (savedRole) {
+      setSelectedRole(savedRole);
+    }
+  }, []);
+
+  const handleRoleChange = (role: string) => {
+    setSelectedRole(role);
+    localStorage.setItem('userRole', role);
+  };
+
+  const handleSubmit = () => {
+    if (selectedRole) {
+      if (onSelect) {
+        onSelect(selectedRole);
+      }
+      localStorage.setItem('userRole', selectedRole);
+      // Redirect to dashboard with the selected role as a dynamic route parameter
+      router.push(`/dashboard`);
+    }
+  };
+
+  return (
+    <div className="p-4 rounded-lg shadow-md">
+      <h2 className="text-lg font-bold mb-4">Select Your Role</h2>
+      <div className="space-y-2 mb-4">
+        {roles.map((role) => (
+          <label
+            key={role}
+            className="flex items-center space-x-2 p-2 rounded-md cursor-pointer"
+          >
+            <input
+              type="radio"
+              name="role"
+              value={role}
+              checked={selectedRole === role}
+              onChange={(e) => handleRoleChange(e.target.value)}
+              className="w-4 h-4 text-blue-500 focus:ring-blue-500"
+            />
+            <span className="capitalize">{role}</span>
+          </label>
+        ))}
+      </div>
+      <button
+        onClick={handleSubmit}
+        className="w-full bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+      >
+        Submit
+      </button>
+    </div>
+  );
+};
+
+export default RoleSelector;
