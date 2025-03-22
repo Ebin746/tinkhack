@@ -30,18 +30,32 @@ export default function AnalysisResult() {
   };
 
   return (
-    <div className="p-4 border rounded mt-4">
-      <h2 className="text-lg font-bold">Analysis Result</h2>
+    <div className="p-6 border rounded-lg shadow-lg bg-white mt-6 max-w-3xl mx-auto">
+      <h2 className="text-2xl font-semibold text-gray-800 mb-4">Analysis Result</h2>
+      <p className="text-gray-600 mb-6">
+        Click the button below to analyze the repository and generate insights.
+      </p>
       <button
         onClick={fetchAnalysis}
-        className="mt-2 bg-green-500 text-white px-4 py-2 rounded"
+        className={`px-6 py-3 rounded-lg text-white font-medium transition ${
+          loading ? "bg-gray-400 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700"
+        }`}
         disabled={loading}
       >
         {loading ? "Generating..." : "Generate Analysis"}
       </button>
 
-      {error && <p className="text-red-500 mt-2">{error}</p>}
-      {analysis && <pre className="mt-4 p-2">{analysis}</pre>}
+      {error && (
+        <p className="text-red-600 mt-4 border border-red-200 bg-red-50 p-3 rounded">
+          {error}
+        </p>
+      )}
+      {analysis && (
+        <div className="mt-6 p-4 bg-gray-100 rounded-lg shadow-inner">
+          <h3 className="text-lg font-medium text-gray-700 mb-2">Analysis Output:</h3>
+          <pre className="text-sm text-gray-800 overflow-auto">{analysis}</pre>
+        </div>
+      )}
     </div>
   );
 }
