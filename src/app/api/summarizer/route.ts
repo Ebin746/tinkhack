@@ -28,7 +28,28 @@ export async function POST(req: Request) {
 
         // Read file content
         const content = fs.readFileSync(readmeFilePath, "utf8");
+ // Step 1: Chunk the content
+ const chunkSize = 1000; // ~250-350 words, adjust based on content
+ const chunks = [];
+ for (let i = 0; i < content.length; i += chunkSize) {
+   chunks.push(content.slice(i, i + chunkSize));
+ }
 
+ // Step 2: Retrieve relevant chunks (RAG - keyword-based)
+ const relevantKeywords = [
+   "import", "class", "function", "extends", "implements", "require", "module",
+   "file", "dependency", "call", "relationship", "subgraph", "node"
+ ];
+ const relevantChunks = chunks.filter(chunk =>
+   relevantKeywords.some(keyword => chunk.toLowerCase().includes(keyword))
+ );
+
+ // Combine and limit retrieved content
+ const maxInputLength = 5000; // Adjust based on Gemini token limit
+ let combinedContent = relevantChunks.join("\n").slice(0, maxInputLength);
+ if (!combinedContent) {
+   combinedContent = content.slice(0, maxInputLength); // Fallback to truncated full content
+ }
         // Define different prompts based on role
         const prompts: Record<string, string> = {
             enthusiast: `
@@ -37,7 +58,7 @@ export async function POST(req: Request) {
 
             Codebase:
             """
-            ${content}
+            ${combinedContent}
             """
             Provide an **exciting and beginner-friendly summary**.
             `,
@@ -47,7 +68,7 @@ export async function POST(req: Request) {
 
             Codebase:
             """
-            ${content}
+            ${combinedContent}
             """
             Provide a **developer-oriented summary** with a focus on implementation details.
             `,
@@ -57,7 +78,7 @@ export async function POST(req: Request) {
 
             Codebase:
             """
-            ${content}
+            ${combinedContent}
             """
             Provide a **detailed architectural summary**, highlighting design choices.
             `,
@@ -67,7 +88,7 @@ export async function POST(req: Request) {
 
             Codebase:
             """
-            ${content}
+            ${combinedContent}
             """
             Provide a **plain-language summary** for non-technical users.
             `,
