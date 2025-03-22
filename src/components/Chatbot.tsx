@@ -23,25 +23,36 @@ export default function Chatbot() {
     };
 
     return (
-        <div className="p-4 rounded-lg shadow">
-            <h2 className="text-lg font-bold mb-2">Chatbot</h2>
-            <div className="h-40 overflow-y-auto  p-2 border">
+        <div className="p-6 border rounded-lg shadow-lg bg-white mt-6 max-w-3xl mx-auto">
+            <h2 className="text-2xl font-semibold text-gray-800 mb-4">Chatbot</h2>
+            <div className="h-60 overflow-y-auto p-4 border rounded-lg bg-gray-50">
                 {messages.map((msg, index) => (
-                    <div key={index} className={msg.role === "AI" ? "text-blue-600" : "text-black"}>
-                        <strong>{msg.role}:</strong> {msg.content}
+                    <div
+                        key={index}
+                        className={`mb-2 ${
+                            msg.role === "AI" ? "text-blue-600" : "text-gray-800"
+                        }`}
+                    >
+                        <strong className="block">{msg.role === "AI" ? "AI" : "You"}:</strong>
+                        <span>{msg.content}</span>
                     </div>
                 ))}
             </div>
-            <input
-                type="text"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                className="border p-2 w-full mt-2"
-                placeholder="Ask about the codebase..."
-            />
-            <button onClick={sendMessage} className="mt-2 bg-blue-500 text-white p-2 rounded">
-                Send
-            </button>
+            <div className="mt-4 flex items-center gap-2">
+                <input
+                    type="text"
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    className="border p-3 rounded-lg flex-1 text-gray-800"
+                    placeholder="Ask about the codebase..."
+                />
+                <button
+                    onClick={sendMessage}
+                    className="bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 transition"
+                >
+                    Send
+                </button>
+            </div>
         </div>
     );
 }

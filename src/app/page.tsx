@@ -1,27 +1,24 @@
 "use client";
-import { useState } from "react";
 import RepoInput from "@/components/RepoInput";
 import AnalysisResult from "@/components/AnalysisResult";
 import Chatbot from "@/components/Chatbot";
 import Summarizer from "@/components/Summarizer";
 
 export default function Home() {
-  
-
-  
-
   return (
-    <main className="container mx-auto p-8">
-      <h1 className="text-3xl font-bold text-center mb-6">GitHub Codebase Analyzer</h1>
-      <RepoInput  />
-
-     <AnalysisResult />
-     <Chatbot/>
-     <Summarizer/>
-
-
-
-     
+    <main className="container mx-auto p-8 bg-white text-black min-h-screen">
+      <h1 className="text-4xl font-extrabold text-center mb-8 text-gray-800">
+        GitHub Codebase Analyzer
+      </h1>
+      <p className="text-lg text-center text-gray-600 mb-12">
+        Analyze your GitHub repositories, generate insights, and interact with an AI-powered chatbot for assistance.
+      </p>
+      <div className="space-y-12">
+        <RepoInput />
+        <AnalysisResult />
+        <Chatbot />
+        <Summarizer />
+      </div>
     </main>
   );
 }
