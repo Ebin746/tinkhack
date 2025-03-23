@@ -43,7 +43,7 @@ export async function POST(req: Request) {
     );
 
     // Combine and limit retrieved content
-    const maxInputLength = 5000; // Adjust based on Gemini token limit
+    const maxInputLength = 7000; // Adjust based on Gemini token limit
     let combinedContent = relevantChunks.join("\n").slice(0, maxInputLength);
     if (!combinedContent) {
       combinedContent = content.slice(0, maxInputLength); // Fallback to truncated full content
@@ -52,6 +52,12 @@ export async function POST(req: Request) {
     let prompt = "";
     console.log(content.toString().length)
 console.log(combinedContent.toString().length)
+let finalContent;
+if(content.toString().length<5000){
+  finalContent=content;
+}else{
+  finalContent=combinedContent
+}
       prompt = `
 Analyze the following codebase and generate a Mermaid.js diagram in **graph TD** syntax.
 
@@ -119,7 +125,7 @@ Analyze the following codebase and generate a Mermaid.js diagram in **graph TD**
       classDef md fill:#F0E68C,stroke:#333,stroke-width:2px;
 
   ### Codebase:
-  "${combinedContent}"
+  "${finalContent}"
 
   ### Important:
   - Output only from 'graph TD' onwards, without additional explanations.
@@ -196,8 +202,11 @@ Analyze the following codebase and generate a Mermaid.js diagram in **graph TD**
   - DO NOT PUT THEME NAMES IN PARENTHESES, JUST PUT THEM IN THE NODE LABELS.  
     Example: Incorrect: themesNightXml["📄 themes.xml (night)"]  
     Correct: themesNightXml["📄 themes.xml night"]  
-
+  
+    If you're writing a C++ or Java program, ensure that it effectively demonstrates Object-Oriented Programming (OOP) concepts such as encapsulation, inheritance, polymorphism, and abstraction
   Only produce error-free, visually clear Mermaid.js output.
+
+
 `;
     
 

@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.0",
+    "@pinecone-database/pinecone": "^5.1.1",
     "@types/html2canvas": "^1.0.0",
     "html2canvas": "^1.4.1",
     "jspdf": "^3.0.1",
