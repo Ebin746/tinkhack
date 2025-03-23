@@ -5,11 +5,11 @@ import path from "path";
 
 function cosineSimilarity(vecA: number[], vecB: number[]): number {
   if (!Array.isArray(vecA) || !Array.isArray(vecB) || vecA.length === 0 || vecB.length === 0) {
-    console.error("Invalid vectors:", { vecA, vecB });
+    
     return 0;
   }
   if (vecA.length !== vecB.length) {
-    console.error("Vector length mismatch:", { vecA_length: vecA.length, vecB_length: vecB.length });
+   
     return 0;
   }
   const dotProduct = vecA.reduce((sum, a, i) => sum + a * vecB[i], 0);
@@ -48,7 +48,7 @@ export async function POST(req: Request) {
     console.log("Number of chunks:", chunks.length);
 
     const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY as string);
-    const embeddingModel = genAI.getGenerativeModel({ model: "embedding-001" });
+    const embeddingModel = genAI.getGenerativeModel({ model: "gemini-embedding-exp-03-07" });
 
     // Sample fewer chunks to reduce requests
     const sampledChunks = chunks.length > 5 ? chunks.slice(0, 5) : chunks;
@@ -119,7 +119,7 @@ export async function POST(req: Request) {
         You're an **outsider** with no prior knowledge of this project.
         Explain what this project does in **simple, clear terms** without technical jargon.
         Codebase: """${combinedContent}"""
-        Provide a **plain-language summary** for non-technical users.
+        Provide a **plain-language summary** for technical users but he is an new to this project.
       `,
     };
 
