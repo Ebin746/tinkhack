@@ -2,7 +2,6 @@
 # 💡 Tinkhack
 
 [![Version](https://img.shields.io/badge/version-0.1.0-blue.svg)](https://www.example.com/version)
-
 [![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)](https://www.example.com/build)
 
 A Next.js project for analyzing GitHub codebases with AI-powered insights.
