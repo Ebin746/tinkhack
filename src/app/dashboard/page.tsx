@@ -22,9 +22,9 @@ export default function Dashboard() {
       </p>
       <div className="space-y-12">
         <RepoInput />
-        <FileTreeRenderer/>
         <AnalysisResult />
         <Summarizer />
+        <FileTreeRenderer/>
       </div>
 
       {/* Chatbot Icon */}
