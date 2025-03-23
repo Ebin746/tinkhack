@@ -9,7 +9,7 @@ function FileTree({ structure, onFileClick }: {
   onFileClick: (filePath: string) => void 
 }) {
   return (
-    <ul className="space-y-2">  
+    <ul className="space-y-2">
       {structure.map((item, index) => (
         <li key={index}>
           {item.type === "folder" ? (
@@ -17,9 +17,9 @@ function FileTree({ structure, onFileClick }: {
           ) : (
             <div
               onClick={() => onFileClick(item.name)} // Pass file name (or full path if needed)
-              className="pl-6 flex items-center gap-2 text-blue-500 hover:text-blue-700 cursor-pointer"
+              className="pl-6 flex items-center gap-2 text-blue-600 hover:text-blue-800 cursor-pointer transition-colors duration-200"
             >
-              <FaFileAlt /> {item.name}
+              <FaFileAlt className="text-gray-500" /> {item.name}
             </div>
           )}
         </li>
@@ -40,7 +40,7 @@ function CollapsibleFolder({ name, children, onFileClick }: {
     <div>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 text-gray-700 hover:text-black transition-colors duration-200"
+        className="flex items-center gap-2 text-gray-700 hover:text-gray-900 font-medium transition-colors duration-200"
       >
         {isOpen ? <FaFolderOpen className="text-yellow-500" /> : <FaFolder className="text-yellow-500" />}
         {name}
@@ -97,18 +97,18 @@ export default function FileTreeRenderer() {
   };
 
   return (
-    <div className="p-6 bg-gray-100 min-h-screen">
-      <h1 className="text-3xl font-bold text-gray-800 mb-4">📂 Folder Structure</h1>
-      {error && <p className="text-red-500">{error}</p>}
+    <div className="p-6 bg-gray-50 min-h-screen">
+      <h1 className="text-3xl font-bold text-gray-800 mb-6">📂 Folder Structure</h1>
+      {error && <p className="text-red-600 bg-red-100 p-3 rounded-lg">{error}</p>}
 
-      <div className="bg-white shadow-md rounded-lg p-4">
+      <div className="bg-white shadow-lg rounded-lg p-6">
         <FileTree structure={fileStructure} onFileClick={handleFileClick} />
       </div>
 
       {/* Render file diagnostics */}
       {fileDiagnostics && (
-        <div className="mt-6 p-4 bg-white shadow-md rounded-lg">
-          <h2 className="text-xl font-semibold text-gray-800">File Diagnostics</h2>
+        <div className="mt-6 p-6 bg-white shadow-lg rounded-lg">
+          <h2 className="text-xl font-semibold text-gray-800 mb-4">File Diagnostics</h2>
           <pre className="mt-2 text-gray-700 bg-gray-100 p-4 rounded-lg overflow-auto">
             {fileDiagnostics}
           </pre>
@@ -117,8 +117,8 @@ export default function FileTreeRenderer() {
 
       {/* Render Low-Level Diagram if file content is available */}
       {selectedFileContent && (
-        <div className="mt-6 bg-white shadow-md rounded-lg p-4">
-          <h2 className="text-xl font-semibold text-gray-800">Low-Level Diagram</h2>
+        <div className="mt-6 bg-white shadow-lg rounded-lg p-6">
+          <h2 className="text-xl font-semibold text-gray-800 mb-4">Low-Level Diagram</h2>
           <LowLevelDiagram fileContent={selectedFileContent} />
         </div>
       )}

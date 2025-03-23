@@ -32,38 +32,47 @@ const RoleSelector: React.FC<RoleSelectorProps> = ({ onSelect }) => {
         onSelect(selectedRole);
       }
       localStorage.setItem('userRole', selectedRole);
-      // Redirect to dashboard with the selected role as a dynamic route parameter
       router.push(`/dashboard`);
     }
   };
 
   return (
-    <div className="p-4 rounded-lg shadow-md">
-      <h2 className="text-lg font-bold mb-4">Select Your Role</h2>
-      <div className="space-y-2 mb-4">
-        {roles.map((role) => (
-          <label
-            key={role}
-            className="flex items-center space-x-2 p-2 rounded-md cursor-pointer"
-          >
-            <input
-              type="radio"
-              name="role"
-              value={role}
-              checked={selectedRole === role}
-              onChange={(e) => handleRoleChange(e.target.value)}
-              className="w-4 h-4 text-blue-500 focus:ring-blue-500"
-            />
-            <span className="capitalize">{role}</span>
-          </label>
-        ))}
+    <div className="flex items-center justify-center min-h-screen bg-gradient-to-b from-gray-50 to-gray-100">
+      <div className="w-full max-w-md p-8 bg-white rounded-lg shadow-lg">
+        <h2 className="text-2xl font-bold text-center text-gray-800 mb-6">
+          Select Your Role
+        </h2>
+        <div className="space-y-4">
+          {roles.map((role) => (
+            <label
+              key={role}
+              className={`flex items-center p-3 border rounded-lg cursor-pointer transition-all
+                ${selectedRole === role 
+                  ? 'border-blue-500 bg-blue-50' 
+                  : 'border-gray-200 hover:bg-blue-50 hover:border-blue-300'}`}
+            >
+              <input
+                type="radio"
+                name="role"
+                value={role}
+                checked={selectedRole === role}
+                onChange={(e) => handleRoleChange(e.target.value)}
+                className="w-5 h-5 text-blue-600 focus:ring-blue-500 border-gray-300"
+              />
+              <span className="ml-3 text-lg capitalize text-gray-700">{role}</span>
+            </label>
+          ))}
+        </div>
+        <button
+          onClick={handleSubmit}
+          className="w-full mt-6 py-2 px-4 text-sm font-medium text-white bg-blue-600 rounded-md 
+                     hover:bg-blue-700 transition-all focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
+                     disabled:opacity-50 disabled:cursor-not-allowed"
+          disabled={!selectedRole}
+        >
+          Submit
+        </button>
       </div>
-      <button
-        onClick={handleSubmit}
-        className="w-full bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-      >
-        Submit
-      </button>
     </div>
   );
 };

@@ -44,7 +44,7 @@ export default function AnalysisResult() {
     if (!analysis) return;
     try {
       const cleanedAnalysis = analysisOutputCorrection(analysis);
-  
+
       // Open a new tab
       const newTab = window.open();
       if (newTab) {
@@ -80,15 +80,18 @@ export default function AnalysisResult() {
       console.error("Mermaid rendering error:", error);
     }
   };
-  
-  
 
   return (
-    <div className="p-4 border rounded mt-4">
-      <h2 className="text-lg font-bold">Analysis Result</h2>
+    <div className="p-6 border rounded-lg shadow-lg bg-white mt-6 max-w-3xl mx-auto">
+      <h2 className="text-2xl font-semibold text-gray-800 mb-4">Analysis Result</h2>
+      <p className="text-gray-600 mb-4">
+        Generate an analysis of the repository and view the results as a Mermaid graph.
+      </p>
       <button
         onClick={fetchAnalysis}
-        className="mt-2 bg-green-500 text-white px-4 py-2 rounded"
+        className={`mt-4 px-6 py-3 rounded-lg text-white font-medium transition ${
+          loading ? "bg-gray-400 cursor-not-allowed" : "bg-green-500 hover:bg-green-600"
+        }`}
         disabled={loading}
       >
         {loading ? "Generating..." : "Generate Analysis"}
@@ -97,13 +100,17 @@ export default function AnalysisResult() {
       {analysis && (
         <button
           onClick={openGraphInNewTab}
-          className="mt-2 ml-4 bg-blue-500 text-white px-4 py-2 rounded"
+          className="mt-4 ml-4 px-6 py-3 rounded-lg text-white font-medium bg-blue-500 hover:bg-blue-600 transition"
         >
           View Graph in New Tab
         </button>
       )}
 
-      {error && <p className="text-red-500 mt-2">{error}</p>}
+      {error && (
+        <p className="text-red-600 mt-4 border border-red-200 bg-red-50 p-3 rounded">
+          {error}
+        </p>
+      )}
     </div>
   );
 }

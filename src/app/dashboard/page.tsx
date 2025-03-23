@@ -9,7 +9,7 @@ export default function Dashboard() {
   const [isChatbotOpen, setIsChatbotOpen] = useState(false);
 
   const toggleChatbot = () => {
-    setIsChatbotOpen(!isChatbotOpen);
+      setIsChatbotOpen(!isChatbotOpen);
   };
 
   return (
@@ -50,7 +50,7 @@ export default function Dashboard() {
             </button>
           </div>
           <div className="p-4 max-h-80 overflow-y-auto">
-            <Chatbot />
+            <Chatbot onClose={toggleChatbot} />
           </div>
         </div>
       )}

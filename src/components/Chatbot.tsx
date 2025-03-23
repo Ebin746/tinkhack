@@ -1,19 +1,24 @@
 "use client";
-import { useState,useEffect } from "react";
+import { useState, useEffect } from "react";
 
-export default function Chatbot() {
+// Define the props for the Chatbot component
+interface ChatbotProps {
+    onClose: () => void; // Function to handle closing the chatbot
+}
+
+export default function Chatbot({ onClose }: ChatbotProps) {
     const [messages, setMessages] = useState<{ role: string; content: string }[]>([]);
     const [input, setInput] = useState("");
     const [role, setRole] = useState("outsider");
-   
-  
+
     // Retrieve role from localStorage on component mount
     useEffect(() => {
-      const storedRole = localStorage.getItem("userRole");
-      if (storedRole) {
-        setRole(storedRole);
-      }
+        const storedRole = localStorage.getItem("userRole");
+        if (storedRole) {
+            setRole(storedRole);
+        }
     }, []);
+
     const sendMessage = async () => {
         if (!input.trim()) return;
 
@@ -32,32 +37,54 @@ export default function Chatbot() {
     };
 
     return (
-        <div className="p-6 border rounded-lg shadow-lg bg-white mt-6 max-w-3xl mx-auto">
-            <h2 className="text-2xl font-semibold text-gray-800 mb-4">Chatbot for {role}</h2>
-            <div className="h-60 overflow-y-auto p-4 border rounded-lg bg-gray-50">
-                {messages.map((msg, index) => (
-                    <div
-                        key={index}
-                        className={`mb-2 ${
-                            msg.role === "AI" ? "text-blue-600" : "text-gray-800"
-                        }`}
-                    >
-                        <strong className="block">{msg.role === "AI" ? "AI" : "You"}:</strong>
-                        <span>{msg.content}</span>
-                    </div>
-                ))}
+        <div className="fixed bottom-8 right-8 w-[400px] h-[500px] bg-white rounded-xl shadow-lg border border-gray-300 flex flex-col">
+            {/* Header */}
+            <div className="p-4 bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-t-xl flex justify-between items-center">
+                <h2 className="text-lg font-semibold">Chatbot for {role}</h2>
+                <button
+                    onClick={onClose} // Call the onClose function when the close button is clicked
+                    className="text-white hover:text-gray-200 transition"
+                    aria-label="Close Chatbot"
+                >
+                    ✖
+                </button>
             </div>
-            <div className="mt-4 flex items-center gap-2">
+
+            {/* Messages Area */}
+            <div className="flex-1 p-4 bg-gray-50 space-y-4">
+                {messages.length === 0 ? (
+                    <p className="text-gray-500 text-center">Start a conversation...</p>
+                ) : (
+                    messages.map((msg, index) => (
+                        <div
+                            key={index}
+                            className={`p-3 rounded-lg shadow-sm ${
+                                msg.role === "AI"
+                                    ? "bg-blue-100 text-blue-800"
+                                    : "bg-white text-gray-800 border border-gray-300"
+                            }`}
+                        >
+                            <strong className="block mb-1">{msg.role === "AI" ? "AI" : "You"}:</strong>
+                            <span>{msg.content}</span>
+                        </div>
+                    ))
+                )}
+            </div>
+
+            {/* Input Area */}
+            <div className="p-4 bg-white border-t border-gray-300 flex items-center gap-2">
                 <input
                     type="text"
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
-                    className="border p-3 rounded-lg flex-1 text-gray-800"
-                    placeholder="Ask about the codebase..."
+                    onKeyPress={(e) => e.key === "Enter" && sendMessage()}
+                    placeholder="Type your message..."
+                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
                 <button
                     onClick={sendMessage}
-                    className="bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 transition"
+                    disabled={!input.trim()}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                     Send
                 </button>
