@@ -14,6 +14,7 @@ A Next.js project for analyzing GitHub codebases with AI-powered insights.
 *   📝 **Code Summarization:** Generate summaries of codebases based on user roles.
 *   📊 **Diagram Generation:** Create Mermaid.js diagrams to visualize code relationships.
 *   🌳 **File Structure Visualization:** Display the file structure of a repository in a collapsible tree.
+*   📥 Efficient Data Handling with RAG: Uses Retrieval-Augmented Generation to filter and analyze large datasets.
 *   🚀 **Easy Setup:** Simple installation and configuration process.
 *   🔒 **Role-Based Insights:** Tailored analysis and summaries based on user roles.
 
