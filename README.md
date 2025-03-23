@@ -91,25 +91,6 @@ The project does not currently have dedicated unit, integration, or E2E tests.  
 > [!NOTE]
 >  The `/api/diagram` endpoint is a POST, but doesn't require a body.  It processes the stored `README.md`.
 
-## Deployment
-
-### Dockerfile
-
-dockerfile
-FROM node:18-alpine
-WORKDIR /app
-COPY . .
-RUN npm install
-CMD ["npm", "start"]
-
-
-### Platform Guides
-
-*   **Vercel:** Refer to the [Next.js deployment documentation][nextjs-deploy-vercel-url] for deploying on Vercel.
-*   **Netlify:** Follow the instructions in the [Netlify documentation][netlify-docs-url] to deploy the project.
-*   **AWS:** Consult the [AWS documentation][aws-docs-url] for deploying on AWS.
-
-## Contributing
 
 ### Branch Naming Convention
 
