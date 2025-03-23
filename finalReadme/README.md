@@ -2,1694 +2,1797 @@
 
 ## File List
 
-- Z-Runner\character.cpp
-- Z-Runner\character.h
-- Z-Runner\Enemy.cpp
-- Z-Runner\Enemy.h
-- Z-Runner\Game.cpp
-- Z-Runner\Game.h
-- Z-Runner\Object.cpp
-- Z-Runner\Object.h
-- Z-Runner\PathFinder.cpp
-- Z-Runner\PathFinder.h
-- Z-Runner\PathFindingNode.cpp
-- Z-Runner\PathFindingNode.h
-- Z-Runner\Platform.cpp
-- Z-Runner\Platform.h
-- Z-Runner\Player.cpp
-- Z-Runner\Player.h
-- Z-Runner\Projectile.cpp
-- Z-Runner\Projectile.h
-- Z-Runner\SceneGenerator.cpp
-- Z-Runner\SceneGenerator.h
-- Z-Runner\Z-Runner.cpp
-- Z-Runner\Z-Runner.vcxproj
-- Z-Runner\Z-Runner.vcxproj.filters
-- Z-Runner\Z-Runner.vcxproj.user
-- Z-Runner.sln
+- components\Categories.js
+- components\Comments.js
+- components\CommentsForm.js
+- components\Footer.js
+- components\Loader.js
+- components\Navbar.js
+- components\PostDetail.js
+- data\post-data.js
+- package.json
+- pages\api\comments.js
+- pages\category\[slug].js
+- pages\index.js
+- pages\post\[slug].js
+- pages\search\result.js
+- pages\_app.js
+- postcss.config.js
+- README.md
+- sections\ChosenBlog.js
+- sections\Landing.js
+- sections\SubmitedBlog.js
+- services\index.js
+- styles\globals.css
+- tailwind.config.js
 
 ## File Contents
 
-### Z-Runner\character.cpp
+### components\Categories.js
 ```
-#include "Character.h"
+"use client"
+import { useState, useEffect } from 'react';
 
-void Character::refreshAttack()
-{
-	sleep(milliseconds(1000.f/attackRate));
-	canAttack = true;
-}
 
-Vector2f Character::toVector2f(Vector2u vector)
-{
-	return Vector2f(vector.x, vector.y);
-}
+import Link from 'next/link'
 
-Texture* Character::getNextTexture(string textureName)
-{
-	try {
-		textureIndex[textureName] = (textureIndex[textureName] + 1) % textures[textureName].size();
-	}
-	catch (exception e) {
-		cout << e.what() << endl;
-		textureIndex[textureName] = 0;
-	}
+import { getCategories } from '../services';
 
-	return textures[textureName][textureIndex[textureName]];
-}
+function Categories() {
+    const [categories, setCategories] = useState([])
 
-int Character::isCollidingWith(RectangleShape shape, bool selfCheck, FloatRect itemToCheck)
-{
-	FloatRect playerBounds = self.getGlobalBounds();
-	FloatRect objectBounds = shape.getGlobalBounds();
-
-	if (!selfCheck) {
-		playerBounds = itemToCheck;
-	}
-
-	if (!playerBounds.intersects(objectBounds)) return -1;
-
-	float playerRight = playerBounds.left + playerBounds.width;
-	float playerBottom = playerBounds.top + playerBounds.height;
-	float objectRight = objectBounds.left + objectBounds.width;
-	float objectBottom = objectBounds.top + objectBounds.height;
-
-	float overlapLeft = playerRight - objectBounds.left;
-	float overlapRight = objectRight - playerBounds.left;
-	float overlapTop = playerBottom - objectBounds.top;
-	float overlapBottom = objectBottom - playerBounds.top;
-
-	bool fromLeft = overlapLeft < overlapRight && overlapLeft < overlapTop && overlapLeft < overlapBottom;
-	bool fromRight = overlapRight < overlapLeft && overlapRight < overlapTop && overlapRight < overlapBottom;
-	bool fromTop = overlapTop < overlapBottom && overlapTop < overlapLeft && overlapTop < overlapRight;
-	bool fromBottom = overlapBottom < overlapTop && overlapBottom < overlapLeft && overlapBottom < overlapRight;
-
-	if (fromLeft) {
-		return 3;
-	}
-	else if (fromRight) {
-		return 1;
-	}
-	else if (fromTop) {
-		return 0;
-	}
-	else if (fromBottom) {
-		return 2;
-	}
-}
-
-bool Character::isOnGround(RectangleShape shape)
-{
-	RectangleShape groundChecker;
-	groundChecker.setSize(Vector2f(size.x * 0.9, 10));
-	groundChecker.setPosition(self.getPosition().x + size.x * 0.05, self.getPosition().y + size.y - 10);
-
-	return groundChecker.getGlobalBounds().intersects(shape.getGlobalBounds());
-}
-
-void Character::updatePosition(Vector2f position)
-{
-	self.setPosition(position);
-}
-
-void Character::updateSize(Vector2f size)
-{
-	self.setScale(vectorDivide(size, toVector2f(self.getTexture()->getSize())));
-}
-
-void Character::receiveDamage(float damage)
-{
-	health -= damage;
-	died = health <= 0;
-}
-
-void Character::setVelocity(Vector2f velocity)
-{
-	if (!isFalling && velocity.y > 0) {
-		velocity.y = 0;
-		this->velocity.y = 0;
-	}
-	this->velocity = velocity;
-}
-
-void Character::addVelocity(Vector2f velocity)
-{
-	if (!isFalling && velocity.y > 0) {
-		velocity.y = 0;
-		this->velocity.y = 0;
-	}
-	this->velocity += velocity;
-}
-
-Vector2f Character::getSize()
-{
-	return size;
-}
-
-Vector2f Character::getPosition()
-{
-	return self.getPosition();
-}
-
-Vector2f Character::getVelocity()
-{
-	return velocity;
-}
-
-```
-
-### Z-Runner\character.h
-```
-#pragma once
-
-#include <SFML/Graphics/RectangleShape.hpp>
-#include<SFML/System/Thread.hpp>
-#include<SFML/System/Sleep.hpp>
-
-#include "Object.h"
-
-#include<unordered_map>;
-#include <vector>
-
-class Character : public Object
-{
-protected:
-	int attackRate;
-
-	Vector2f velocity;
-	vector<RectangleShape> gunShots;
-	void refreshAttack();
-	Vector2f size;
-
-	unordered_map<string, vector<Texture*>> textures;
-
-	float health = 20;
-
-	Thread* attackingTimer;
-
-	template <typename T>
-
-	T vectorDivide(T x, T y) {
-		return Vector2f(x.x / y.x, x.y / y.y);
-	}
-
-	Vector2f toVector2f(Vector2u vector);
-
-	unordered_map<string, int> textureIndex;
-
-	Texture* getNextTexture(string textureName);
-
-public :
-	bool isFalling = true;
-	bool canAttack = true;
-	bool died = false;
-
-	int isCollidingWith(RectangleShape shape, bool selfCheck, FloatRect itemToCheck = FloatRect());
-	bool isOnGround(RectangleShape shape);
-
-	void updatePosition(Vector2f position);
-	void updateSize(Vector2f size);
-
-	void receiveDamage(float damage);
-
-	void setVelocity(Vector2f velocity);
-	void addVelocity(Vector2f velocity);
-
-	Vector2f getSize();
-	Vector2f getPosition();
-	Vector2f getVelocity();
-};
-
-
-```
-
-### Z-Runner\Enemy.cpp
-```
-#include "Enemy.h"
-
-void Enemy::trueUpdate(float deltaTime, vector<Platform> platforms, vector<Projectile*> projectiles,FloatRect playerBounds,FloatRect ground,PathFinder pathFinder)
-{
-	readyToUpdate = false;
-
-	/*PathFindingNode startNode(0, 900, true);
-	PathFindingNode targetNode(100, 900, true);
-
-	std::vector<PathFindingNode*> path = pathFinder.findPath(startNode,targetNode,enemy.getSize().x,enemy.getSize().y,10,2,10000);
-	for (int i = 0; i < 10; i++) {
-
-		enemy.setPosition(path[i]->x,path[i]->y);
-		cout << enemy.getPosition().x << " x " << enemy.getPosition().x<<endl;
-	}*/
-
-	if (canSeePlayer && !isFalling) {
-		setVelocity(Vector2f(70 * (playerBounds.getPosition().x - self.getPosition().x > 0 ? 1.f : -1.f), velocity.y));
-	}
-
-	isFalling = !self.getGlobalBounds().intersects(ground);
-	for (Platform platform : platforms) {
-		int collidingSide = isCollidingWith(platform.getObject(),true);
-
-		isFalling = isFalling && collidingSide != 0;
-
-		if (collidingSide == 0) continue;
-
-		if (collidingSide == 1) {
-			setVelocity(Vector2f(velocity.x < 0 ? 0 : velocity.x, velocity.y));
-			if(!isFalling) addVelocity(Vector2f(0, -50));
-		}
-		else if (collidingSide == 3) {
-			setVelocity(Vector2f(velocity.x > 0 ? 0 : velocity.x, velocity.y));
-			if (!isFalling) addVelocity(Vector2f(0, -100));
-		}
-		else if (collidingSide == 2 && !platform.ispassThrough) {
-			setVelocity(Vector2f(velocity.x, velocity.y < 0 ? 0 : velocity.y));
-		}
-	}
-
-	for (Projectile* projectile : projectiles) {
-		if (projectile->isHostile) continue;
-
-		if(self.getGlobalBounds().intersects(projectile->getObject().getGlobalBounds()) && !projectile->destroyed) {
-			receiveDamage(projectile->getDamage());
-			projectile->destruct();
-		}
-	}
-
-	if (self.getGlobalBounds().intersects(playerBounds)) {
-		velocity.x = 0;
-	}
-
-	if (isFalling) {
-		addVelocity(Vector2f(0, 50) * deltaTime);
-		setVelocity(Vector2f(0, velocity.y));
-	}
-
-	if (!isFalling && getVelocity().y > 0) {
-		setVelocity(Vector2f(getVelocity().x, 0));
-	}
-
-	Vector2f newPosition = getPosition() + velocity * deltaTime;
-	FloatRect afterMovement(Vector2f(newPosition), getSize());
-	for (Platform platform : platforms) {
-		int collidingSide = isCollidingWith(platform.getObject(), false,FloatRect(newPosition,getSize()));
-
-		if (collidingSide == 1) {
-			newPosition.x = platform.getObject().getSize().x + platform.getObject().getPosition().x;
-		}
-		else if (collidingSide == 3) {
-			newPosition.x = platform.getObject().getPosition().x-getSize().x;
-		}
-		else if (collidingSide == 2 && !platform.ispassThrough) {
-			newPosition.y= platform.getObject().getSize().y + platform.getObject().getPosition().y;
-		}
-		else if (collidingSide == 0) {
-			newPosition.y = platform.getObject().getPosition().y-getSize().y;
-		}
-	}
-
-	updatePosition(getPosition() + velocity * deltaTime);
-
-
-	if (velocity.x != 0) {
-		self.setTexture(*getNextTexture("move"),true);
-		updateSize(size);
-		self.setScale(-self.getScale().x*velocity.x / abs(velocity.x), self.getScale().y);
-	}
-
-	readyToUpdate = true;
-
-}
-
-
-Enemy::Enemy(float width, float x, float y, unordered_map<string, vector<Texture*>> &texture)
-{
-	self.setPosition(x, y);
-
-	this->textures = texture;
-	self.setTexture(*texture["idle"][0]);
-	
-	size = Vector2f(width, width);
-	updateSize(size);
-
-	attackingTimer = nullptr;
-	updateThread = nullptr;
-	attackRate = 2;
-}
-
-int Enemy::attackPlayer()
-{
-	if (!canAttack) return 0;
-	delete attackingTimer;
-	canAttack = false;
-	attackingTimer = new Thread(bind( & Enemy::refreshAttack, this));
-	attackingTimer->launch();
-	return ATTACK_POWER;
-}
-
-void Enemy::update(float deltaTime, vector<Platform> platforms, vector<Projectile*> projectiles, FloatRect playerBounds,FloatRect ground,PathFinder pathFinder)
-{
-	if (died || !readyToUpdate) return;
-	
-	//trueUpdate(deltaTime, platforms, projectiles, playerBounds);
-	delete updateThread;
-	updateThread = new Thread(bind(&Enemy::trueUpdate, this, deltaTime, platforms, projectiles, playerBounds,ground, pathFinder));
-	updateThread->launch();
-}
-```
-
-### Z-Runner\Enemy.h
-```
-#pragma once
-
-#define ATTACK_POWER 5
-
-#include<iostream>
-#include <functional>
-
-#include "Platform.h"
-#include "Projectile.h"
-
-#include "PathFinder.h"
-#include "PathFindingNode.h"
-
-#include "Character.h"
-
-class Enemy : public Character
-{
-private:
-	void trueUpdate(float deltaTime, vector<Platform> platforms, vector<Projectile*> projectiles, FloatRect playerBounds, FloatRect ground,PathFinder pathFinder);
-	
-	Thread* updateThread;
-
-	bool readyToUpdate = true;
-
-public:
-	bool canSeePlayer = false;
-
-	Enemy(float width, float x, float y, unordered_map<string, vector<Texture*>> &texture);
-
-	int attackPlayer();
-
-	void update(float deltaTime,vector<Platform> platforms,vector<Projectile*> projectiles, FloatRect playerBounds, FloatRect ground,PathFinder pathFinder);
-
-};
-
-
-```
-
-### Z-Runner\Game.cpp
-```
-#include "Game.h"
-#include <iostream>
-#include <filesystem>
-
-void Game::initializeVariables()
-{
-	this->window = nullptr;
-
-    //Loading texture
-    path ResFolder = current_path() / "res\\textures\\sprites";
-
-    for (const auto& character : directory_iterator(ResFolder)) {
-        unordered_map<string, vector<Texture*>>* textureGroup = new unordered_map<string, vector<Texture*>>();
-        for (const auto& animation : directory_iterator(character.path())) {
-            vector<Texture*>* textures = new vector<Texture*>();
-            for (const auto& file : directory_iterator(animation.path())) {
-                Texture* texture = new Texture();
-                texture->loadFromFile("res\\textures\\sprites\\"+relative(file,ResFolder).string());
-                textures->push_back(texture);
+    useEffect(() => {
+        const fetchCategories = async () => {
+            try {
+                const catData = await getCategories()
+                setCategories(catData)
+            } catch (error) {
+                console.log("Error fetching catedories", error);
             }
-            (*textureGroup)[animation.path().filename().string()] = *textures;
         }
-        Textures[character.path().filename().string()] = *textureGroup;
-    }
+        fetchCategories()
+    }, [])
+
+
+    return (
+        <div className='max-w-screen-xl  mx-auto p-4 mt-5 mb-5 md:overflow-hidden overflow-y-auto hidden md:block'>
+            <div className='flex flex-nowrap gap-10 md:gap-28  md:justify-center '>
+                <span className='cat_main'>All Categories</span>
+                {categories.map((item, index) => (
+                    <div className='cat_title'>
+                        <Link key={index} href={`/category/${item.slug}`}>
+                            {item.name}
+                        </Link>
+                    </div>
+                ))}
+
+            </div>
+        </div>
+    )
 }
 
-void Game::initializeWindow()
-{
-	videoMode.width = SCREEN_WIDTH;//1920
-	videoMode.height = SCREEN_HEIGHT;//1080
+export default Categories
+```
 
-	window=new RenderWindow(videoMode, "Z-Runner", Style::Titlebar | Style::Close);
+### components\Comments.js
+```
+import React, { useEffect, useState } from 'react';
 
-    window->setFramerateLimit(30);
+import moment from 'moment';
+import parse from 'html-react-parser';
 
-    window->setKeyRepeatEnabled(false);
+import { getComments } from '../services';
 
-    deltaTime = clock.restart();
-}
 
-Game::Game() : mainCamera(FloatRect(0.f, SCREEN_HEIGHT-VIEW_HEIGHT, VIEW_WIDTH, VIEW_HEIGHT)),sceneGenerator(nextSceneObjects, SCREEN_HEIGHT * 0.9f,SCREEN_WIDTH,SCREEN_HEIGHT), grid(SCREEN_WIDTH, vector<PathFindingNode>(SCREEN_HEIGHT, PathFindingNode(0, 0, true))), pathFinder(SCREEN_WIDTH, SCREEN_HEIGHT)
-{
-	this->initializeVariables();
-	this->initializeWindow();
 
-    ground.initialize(SCREEN_WIDTH, SCREEN_HEIGHT * 0.1f,0,SCREEN_HEIGHT*0.9f, Color(99, 86, 49,0),true);
-    player.initialize(SCREEN_WIDTH/56, SCREEN_WIDTH / 56, SCREEN_WIDTH / 37, ground.getPosition().y - SCREEN_WIDTH / 56, Textures["player"]);
+const Comments = ({ slug }) => {
+    const [comments, setComments] = useState([]);
 
-    Platform safeZoneBarrier;
-    safeZoneBarrier.initialize(200, 100, VIEW_WIDTH - 200, ground.getPosition().y - 100, Color::Red, false);
+    useEffect(() => {
+        getComments(slug).then((result) => {
+            setComments(result);
+        });
+    }, []);
 
-    window->setView(mainCamera);
+    return (
+        <>
+            {comments.length > 0 && (
+                <div className="bg-white shadow-lg rounded-lg p-8 pb-12 mb-8">
+                    <h3 className="text-xl mb-8 font-semibold border-b pb-4">
+                        {comments.length}
+                        {' '}
+                        Comments
+                    </h3>
+                    {comments.map((comment, index) => (
+                        <div key={index} className="border-b border-gray-100 mb-4 pb-4">
+                            <p className="mb-4">
+                                <span className="font-semibold">{comment.name}</span>
+                                {' '}
+                                on
+                                {' '}
+                                {moment(comment.createdAt).format('MMM DD, YYYY')}
+                            </p>
+                            <p className="whitespace-pre-line text-gray-600 w-full">{parse(comment.comment)}</p>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </>
+    );
+};
 
-    gameObjects.Platforms.push_back(safeZoneBarrier);
-    gameObjects.Enemies.push_back(new Enemy( 50, VIEW_WIDTH - 300, ground.getPosition().y - 150, Textures["zombie"]));
+export default Comments;
+```
 
-    
-    /*for (int x = 0; x < SCREEN_WIDTH; x++) {
-        for (int y = 0; y < SCREEN_HEIGHT; y++) {
-            grid[x][y] = PathFindingNode(x, y, true); // Initialize each node as walkable
+### components\CommentsForm.js
+```
+import React, { useState, useEffect } from 'react';
+import { submitComment } from '../services';
+
+const CommentsForm = ({ slug }) => {
+    const [error, setError] = useState(false);
+    const [localStorage, setLocalStorage] = useState(null);
+    const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+    const [formData, setFormData] = useState({ name: null, email: null, comment: null, storeData: false });
+
+    useEffect(() => {
+        setLocalStorage(window.localStorage);
+        const initalFormData = {
+            name: window.localStorage.getItem('name'),
+            email: window.localStorage.getItem('email'),
+            storeData: window.localStorage.getItem('name') || window.localStorage.getItem('email'),
+        };
+        setFormData(initalFormData);
+    }, []);
+
+    const onInputChange = (e) => {
+        const { target } = e;
+        if (target.type === 'checkbox') {
+            setFormData((prevState) => ({
+                ...prevState,
+                [target.name]: target.checked,
+            }));
+        } else {
+            setFormData((prevState) => ({
+                ...prevState,
+                [target.name]: target.value,
+            }));
         }
-    }
+    };
 
-    // Adjust walkable nodes based on intersections with platforms and obstacles
-    for (auto& row : grid) {
-        for (auto& node : row) {
-            sf::FloatRect nodeRect(static_cast<float>(node.x), static_cast<float>(node.y), 1.0f, 1.0f); // Create SFML FloatRect for current node
+    const handlePostSubmission = () => {
+        setError(false);
+        const { name, email, comment, storeData } = formData;
+        if (!name || !email || !comment) {
+            setError(true);
+            return;
+        }
+        const commentObj = {
+            name,
+            email,
+            comment,
+            slug,
+        };
 
-            // Check intersections with platforms
-            for (Platform& platform : gameObjects.Platforms) {
-                if (platform.getObject().getGlobalBounds().intersects(nodeRect)) {
-                    node.walkable = false;
-                    break; // No need to check other platforms if already not walkable
+        if (storeData) {
+            localStorage.setItem('name', name);
+            localStorage.setItem('email', email);
+        } else {
+            localStorage.removeItem('name');
+            localStorage.removeItem('email');
+        }
+
+        submitComment(commentObj)
+            .then((res) => {
+                if (res.createComment) {
+                    if (!storeData) {
+                        formData.name = '';
+                        formData.email = '';
+                    }
+                    formData.comment = '';
+                    setFormData((prevState) => ({
+                        ...prevState,
+                        ...formData,
+                    }));
+                    setShowSuccessMessage(true);
+                    setTimeout(() => {
+                        setShowSuccessMessage(false);
+                    }, 3000);
                 }
-            }
-
-            // Check intersections with obstacles (assuming Obstacle is similar to Platform)
-            if (!node.walkable) continue; // Skip obstacle check if node is already not walkable
-            for (Obstacle& obstacle : gameObjects.Obstacles) {
-                if (obstacle.getObject().getGlobalBounds().intersects(nodeRect)) {
-                    node.walkable = false;
-                    break; // No need to check other obstacles if already not walkable
-                }
-            }
-        }
-    }
-
-    pathFinder.setGrid(grid);*/
-
-
-    sceneGenerator.setTextures(Textures);
-    sceneGenerator.generateNextScene();
-}
-
-Game::~Game()
-{
-	delete window;
-}
-
-void Game::eventHandler()
-{
-    while (window->pollEvent(event)) {
-        switch (event.type) {
-
-        case Event::Closed:
-            window->close();
-            break;
-        case Event::KeyPressed:
-            switch (event.key.code) {
-            case Keyboard::Escape:
-                window->close();
-                break;
-            case Keyboard::A:
-                pressedKey = event.key.code;
-                break;
-            case Keyboard::D:
-                pressedKey = event.key.code;
-                break;
-            case Keyboard::Space:
-                if (!player.isFalling) {
-                    player.addVelocity(Vector2f(0,-JUMP_HEIGHT));
-                }
-            }
-            break;
-        case Event::KeyReleased:
-            switch (event.key.code) {
-            case Keyboard::A:
-                pressedKey = -1;
-                break;
-            case Keyboard::D:
-                pressedKey = -1;
-                break;
-            }
-            break;
-
-        }
-    }
-
-}
-
-void Game::update()
-{
-    vector<RectangleShape> objects;
-
-    Vector2f mousePos = window->mapPixelToCoords(Mouse::getPosition(*window));
-    deltaTime = clock.restart();
-
-    eventHandler();
-
-    if (pressedKey == Keyboard::A) {
-        player.addVelocity(Vector2f(-MOVEMENT_SPEED, 0));
-    }
-    else if (pressedKey==Keyboard::D) {
-        player.addVelocity(Vector2f(MOVEMENT_SPEED, 0));
-
-   }
-
-    //Player on ground check
-    player.isFalling = player.isCollidingWith(ground.getObject(),true)!=0;
-    for (Platform platform : gameObjects.Platforms) {
-        int collidingSide = player.isCollidingWith(platform.getObject(),true);
-        objects.push_back(platform.getObject());
-
-        player.isFalling = player.isFalling && collidingSide!=0;
-
-        if (collidingSide==0) continue;
-
-        if (collidingSide == 1) {
-            player.setVelocity(Vector2f(player.getVelocity().x < 0 ? 0 : player.getVelocity().x, player.getVelocity().y));
-        }
-        else if (collidingSide == 3) {
-            player.setVelocity(Vector2f(player.getVelocity().x > 0 ? 0 : player.getVelocity().x, player.getVelocity().y));
-        }
-        else if (collidingSide == 2 && !platform.ispassThrough) {
-            player.setVelocity(Vector2f(player.getVelocity().x, player.getVelocity().y < 0 ? 0 : player.getVelocity().y));
-        }
-
-    }
-
-    if (!player.isFalling && player.getVelocity().y > 0) {
-        player.setVelocity(Vector2f(player.getVelocity().x, 0));
-    }
-
-    //gravity
-    if (player.isFalling) {
-        player.addVelocity(Vector2f(0, GRAVITY)*deltaTime.asSeconds());
-    }
-
-    //friction
-    if (player.getVelocity().x != 0) {
-        float friction = -player.getVelocity().x*0.4;
-        friction = abs(friction) < 0.1 ? -player.getVelocity().x: friction;
-        player.addVelocity(Vector2f(friction, 0));
-    }
-
-    //Player shooting
-    if (player.canAttack && !player.died) {
-        if (gameObjects.Projectiles.size() > 10) {
-            Projectile* t;
-            t = gameObjects.Projectiles.back();
-            gameObjects.Projectiles.pop_back();
-            delete t;
-        }
-
-        gameObjects.Projectiles.insert(gameObjects.Projectiles.begin(), player.shootAt(mousePos));
-    }
-
-    objects.push_back(ground.getObject());
-
-    //Updating projectiles
-    for (Projectile* p : gameObjects.Projectiles) {
-        if (p->destroyed) {
-            continue;
-        }
-        
-        p->update(deltaTime.asSeconds(),objects);
-    }
-
-    //Updating Enemies
-    for (Enemy* e : gameObjects.Enemies) {
-        if (e->died) {
-            continue;
-        }
-
-        if (e->getObject().getGlobalBounds().intersects(player.getObject().getGlobalBounds())) {
-            player.receiveDamage(e->attackPlayer());
-        }
-
-        e->canSeePlayer = FloatRect(mainCamera.getCenter() - mainCamera.getSize() / 2.f, mainCamera.getSize()).intersects(e->getObject().getGlobalBounds());
-
-        e->update(deltaTime.asSeconds(),gameObjects.Platforms,gameObjects.Projectiles,player.getObject().getGlobalBounds(),ground.getObject().getGlobalBounds(),pathFinder);
-
-    }
-    //Player died
-    if (player.died) {
-        player.setVelocity(Vector2f(0, player.getVelocity().y));
-        //player.setColor(Color::White);
-    }
-
-    player.updatePosition(player.getPosition() + player.getVelocity()*deltaTime.asSeconds());
-
-    //camera movements
-    if (player.getPosition().x >= mainCamera.getCenter().x && player.getVelocity().x > 0) {
-        if (mainCamera.getCenter().x < SCREEN_WIDTH - VIEW_WIDTH / 2) {
-            mainCamera.move(Vector2f(player.getVelocity().x * deltaTime.asSeconds(), 0));
-        }
-    }
-    else if (player.getPosition().x <= mainCamera.getCenter().x && player.getVelocity().x < 0) {
-        if (mainCamera.getCenter().x > VIEW_WIDTH / 2) {
-            mainCamera.move(Vector2f(player.getVelocity().x * deltaTime.asSeconds(), 0));
-        }
-    }
-
-    if (player.getPosition().x >= SCREEN_WIDTH * 0.9) {
-        player.updatePosition(Vector2f(SCREEN_WIDTH / 37, ground.getPosition().y - SCREEN_WIDTH / 56));
-        player.setVelocity(Vector2f(0, 0));
-        mainCamera.reset(FloatRect(0.f, SCREEN_HEIGHT - VIEW_HEIGHT, VIEW_WIDTH, VIEW_HEIGHT));
-        if (gameObjects.id != nextSceneObjects.id) {
-            gameObjects = nextSceneObjects;
-            sceneGenerator.generateNextScene();
-        }
-        /*if (!isInSceneTransition) {
-            cout << "Starting scene Generation" << endl;
-            isInSceneTransition = true;
-        }else if (!sceneGenerator.isGeneratingScene) {
-            cout << "Finished scene Generation" << endl;
-            
-            isInSceneTransition = false;
-        } */
-    }
-
-}
-
-void Game::render()
-{
-    window->clear();
- 
-    window->draw(ground.getObject());
-    window->draw(player.getObject());
-
-    for (Platform p : gameObjects.Platforms) {
-        window->draw(p.getObject());
-    }
-
-    for (Projectile* p : gameObjects.Projectiles) {
-        if (p->destroyed) continue;
-        window->draw(p->getObject());
-    }
-    for (Enemy* e : gameObjects.Enemies) {
-        if (e->died) continue;
-        window->draw(e->getObject());
-    }
-
-    window->setView(mainCamera);
-
-    window->display();
-}
-
-bool Game::isRunning()
-{
-	return this->window->isOpen();
-}
-
-```
-
-### Z-Runner\Game.h
-```
-#pragma once
-
-#define SCREEN_WIDTH 1920.f
-#define SCREEN_HEIGHT 1080.f
-
-#define GRAVITY 50
-
-#define VIEW_WIDTH 960.f
-#define VIEW_HEIGHT 540.f
-
-#include <SFML/Graphics.hpp>
-#include <SFML/Audio.hpp>
-#include <SFML/Window.hpp>
-#include <SFML/System.hpp>
-#include <SFML/Network.hpp>
-
-#include <vector>
-#include <unordered_map>
-#include <filesystem>
-
-#include "Enemy.h"
-#include "Platform.h"
-#include "Player.h"
-#include "Projectile.h"
-
-#include "SceneGenerator.h"
-
-#include "PathFinder.h"
-#include <filesystem>
-
-using namespace sf;
-using namespace std;
-using namespace filesystem;
-
-//typedef struct GameObjects {
-//	vector<Enemy> Enemies;
-//	vector<Obstacle> Obstacles; 
-//	vector<Platform> Platforms;
-//	vector<Projectile*> Projectiles;
-//} GameObjects;
-
-class Game
-{
-
-private :
-	RenderWindow* window;
-	VideoMode videoMode;
-	Event event;
-	int pressedKey = -1;
-	Clock clock;
-	Time deltaTime;
-
-	Player player;
-	Platform ground;
-	GameObjects gameObjects;
-	unordered_map<string,unordered_map<string,vector<Texture*>>> Textures;
-
-	SceneGenerator sceneGenerator;
-
-	bool isInSceneTransition=false;
-
-	View mainCamera;
-
-	void loadTexture();
-
-	void initializeVariables();
-	void initializeWindow();
-
-	vector<vector<PathFindingNode>> grid;
-	PathFinder pathFinder;
-public :
-	GameObjects nextSceneObjects;
-	Game();
-	virtual ~Game();
-
-	void eventHandler();
-	void update();
-	void render();
-
-	bool isRunning();
-
-	friend class SceneGenerator;
+            });
+    };
+
+    return (
+        <div className="bg-white shadow-lg rounded-lg p-8 pb-12 mb-8">
+            <h3 className="text-xl mb-8 font-semibold border-b pb-4">Leave a Reply</h3>
+            <div className="grid grid-cols-1 gap-4 mb-4">
+                <textarea value={formData.comment} onChange={onInputChange} className="p-4 outline-none w-full rounded-lg h-40 focus:ring-2 focus:ring-gray-200 bg-gray-100 text-gray-700" name="comment" placeholder="Comment" />
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+                <input type="text" value={formData.name} onChange={onInputChange} className="py-2 px-4 outline-none w-full rounded-lg focus:ring-2 focus:ring-gray-200 bg-gray-100 text-gray-700" placeholder="Name" name="name" />
+                <input type="email" value={formData.email} onChange={onInputChange} className="py-2 px-4 outline-none w-full rounded-lg focus:ring-2 focus:ring-gray-200 bg-gray-100 text-gray-700" placeholder="Email" name="email" />
+            </div>
+            <div className="grid grid-cols-1 gap-4 mb-4">
+                <div>
+                    <input checked={formData.storeData} onChange={onInputChange} type="checkbox" id="storeData" name="storeData" value="true" />
+                    <label className="text-gray-500 cursor-pointer" htmlFor="storeData"> Save my name, email in this browser for the next time I comment.</label>
+                </div>
+            </div>
+            {error && <p className="text-xs text-red-500">All fields are mandatory</p>}
+            <div className="mt-8">
+                <button type="button" onClick={handlePostSubmission} className="transition duration-500 ease hover:bg-indigo-900 inline-block bg-pink-600 text-lg font-medium rounded-full text-white px-8 py-3 cursor-pointer">Post Comment</button>
+                {showSuccessMessage && <span className="text-xl float-right font-semibold mt-3 text-green-500">Comment submitted for review</span>}
+            </div>
+        </div>
+    );
 };
 
-
+export default CommentsForm;
 ```
 
-### Z-Runner\Object.cpp
+### components\Footer.js
 ```
-#include "Object.h"
 
-Sprite Object::getObject()
-{
-    return self;
+import Link from 'next/link'
+import dynamic from 'next/dynamic'
+
+function Footer() {
+    return (
+
+        <footer class="bg-white rounded-lg shadow m-4 dark:bg-gray-800">
+            <div class="w-full mx-auto max-w-screen-xl p-4 md:flex md:items-center md:justify-between text-center">
+                <span class="text-sm text-gray-500 sm:text-center dark:text-gray-400 copyright">© 2023 <a href="/" class="hover:underline copyright">Mehranlip Blog™</a>. All Rights Reserved.
+                </span>
+                <ul class="flex flex-wrap items-center mt-3 text-sm text-center font-medium text-gray-500 dark:text-gray-400 sm:mt-0">
+                    <li>
+                        <Link href="/" class="mr-4 hover:underline md:mr-6  footer-link">Home page</Link>
+                    </li>
+                    <li>
+                        <Link href="/category/news" class="mr-4 hover:underline md:mr-6 footer-link">News</Link>
+                    </li>
+                    <li>
+                        <Link href="https://mehranlip.ir" class="mr-4 hover:underline md:mr-6 footer-link">About us</Link>
+                    </li>
+                    <li>
+                        <Link href="#" class="hover:underline footer-link">Contact</Link>
+                    </li>
+                </ul>
+            </div>
+        </footer>
+
+    )
 }
 
+export default dynamic(() => Promise.resolve(Footer), { ssr: false })
 ```
 
-### Z-Runner\Object.h
+### components\Loader.js
 ```
-#pragma once
+const Loader = () => (
+    <div className="text-center">
+        <button
+            type="button"
+            className="inline-flex items-center px-4 py-2 border border-transparent text-base leading-6 font-medium rounded-md text-white bg-rose-600 hover:bg-rose-500 focus:border-rose-700 active:bg-rose-700 transition ease-in-out duration-150 cursor-not-allowed"
+            disabled=""
+        >
+            <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+            </svg>
+            Loading
+        </button>
+    </div>
+);
 
-#include <SFML/Graphics/Sprite.hpp>
-#include <SFML/Graphics/Texture.hpp>
-
-#include <iostream>
-
-using namespace std;
-using namespace sf;
-
-class Object
-{
-protected:
-	Sprite self;
-public:
-	Sprite getObject();
-};
-
-
+export default Loader;
 ```
 
-### Z-Runner\PathFinder.cpp
+### components\Navbar.js
 ```
-#include "PathFinder.h"
-#include <algorithm> // for min_element, remove
-#include <cmath> // for abs
+import React from 'react'
 
-float PathFinder::heuristic(const PathFindingNode& a, const PathFindingNode& b)
-{
-    return std::abs(a.x - b.x) + std::abs(a.y - b.y); // Manhattan distance
+import Link from 'next/link'
+
+
+function Navbar() {
+    return (
+        <>
+            <header>
+                <title>Mehranlip Blog</title>
+                <script src="https://cdnjs.cloudflare.com/ajax/libs/flowbite/2.0.0/flowbite.min.js"></script>
+                <link href="https://cdnjs.cloudflare.com/ajax/libs/flowbite/2.0.0/flowbite.min.css" rel="stylesheet" />
+            </header>
+            <nav className=" w-full z-20 top-0 left-0 ">
+                <div className="max-w-screen-xl flex flex-wrap items-center justify-between mx-auto p-4">
+                    <Link href="/" className="flex items-center Main_logo">
+                        Mehranlip Blog
+                    </Link>
+                    <div className="flex md:order-2">
+                        <button className='mr-4'>
+                            <Link href="/search/result">
+                                <svg class="w-6 h-6 text-gray-800 dark:text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 20">
+                                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m19 19-4-4m0-7A7 7 0 1 1 1 8a7 7 0 0 1 14 0Z" />
+                                </svg>
+                            </Link>
+                        </button>
+                        <button type="button" className="button_navbar hidden md:block focus:ring-4 px-4 py-2 text-center mr-3 md:mr-0"><Link href="https://app.hygraph.com">
+                            Get Articler
+                        </Link> </button>
+
+                        <button data-collapse-toggle="navbar-sticky" type="button" className="inline-flex items-center p-2 w-10 h-10 justify-center text-sm text-gray-500 rounded-lg md:hidden hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-200 dark:text-gray-400 dark:hover:bg-gray-700 dark:focus:ring-gray-600" aria-controls="navbar-sticky" aria-expanded="false">
+                            <span className="sr-only">Open main menu</span>
+                            <svg className="w-5 h-5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 17 14">
+                                <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M1 1h15M1 7h15M1 13h15" />
+                            </svg>
+                        </button>
+                    </div>
+                    <div className="items-center justify-between hidden w-full md:flex md:w-auto md:order-1" id="navbar-sticky">
+                        <ul className="flex flex-col p-4 md:p-0 mt-4 md:flex-row md:space-x-8 md:mt-0 md:border-0">
+                            <li>
+                                <Link href="/" className="Navbar_link block py-2 pl-3 pr-4 hover:opacity-70 " >Home page</Link>
+                            </li>
+                            <li>
+                                <Link href="/category/news" className=" Navbar_link block py-2 pl-3 pr-4 hover:opacity-70">News</Link>
+                            </li>
+                            <li>
+                                <Link href="https://mehranlip.ir/" className=" Navbar_link block py-2 pl-3 pr-4 hover:opacity-70">About us</Link>
+                            </li>
+                            <li>
+                                <Link href="#" className=" Navbar_link block py-2 pl-3 pr-4 hover:opacity-70">Contact</Link>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </nav>
+        </>
+
+
+    )
 }
 
-bool PathFinder::canMoveToPosition(int x, int y, int enemyWidth, int enemyHeight)
-{
-    for (int i = 0; i < enemyWidth; ++i) {
-        for (int j = 0; j < enemyHeight; ++j) {
-            int checkX = x + i;
-            int checkY = y + j;
-            if (checkX < 0 || checkX >= screenHeight || checkY < 0 || checkY >= screenHeight || !grid[checkX][checkY].walkable) {
-                return false;
+export default Navbar
+```
+
+### components\PostDetail.js
+```
+import React from 'react';
+import moment from 'moment';
+
+import { CopyBlock, github } from 'react-code-blocks';
+import { FaCopy } from 'react-icons/fa';
+import copy from 'copy-to-clipboard';
+
+const PostDetail = ({ post }) => {
+    const getContentFragment = (index, text, obj, type) => {
+        let modifiedText = text;
+
+        if (obj) {
+            if (obj.bold) {
+                modifiedText = (<b key={index}>{text}</b>);
             }
-        }
-    }
-    return true;
-}
 
-PathFinder::PathFinder(int screenWidth, int screenHeight)
-{
-    this->screenWidth = screenWidth;
-    this->screenHeight = screenHeight; // Fixed assignment for screenHeight
-}
-
-std::vector<PathFindingNode*> PathFinder::findPath(PathFindingNode& startNode, PathFindingNode& targetNode, int enemyWidth, int enemyHeight, int jumpHeight, int jumpWidth, int fallDistance)
-{
-    std::vector<PathFindingNode*> openSet;
-    std::vector<PathFindingNode*> closedSet;
-
-    openSet.push_back(&startNode);
-
-    while (!openSet.empty()) {
-        auto currentNode = *std::min_element(openSet.begin(), openSet.end(), [](PathFindingNode* a, PathFindingNode* b) { return a->getFCost() < b->getFCost(); });
-
-        if (*currentNode == targetNode) {
-            std::vector<PathFindingNode*> path;
-            while (currentNode != &startNode) {
-                path.push_back(currentNode);
-                currentNode = currentNode->parent;
+            if (obj.italic) {
+                modifiedText = (<em key={index}>{text}</em>);
             }
-            std::reverse(path.begin(), path.end());
-            return path;
-        }
 
-        openSet.erase(std::remove(openSet.begin(), openSet.end(), currentNode), openSet.end());
-        closedSet.push_back(currentNode);
-
-        std::vector<PathFindingNode*> neighbors;
-
-        // Check left and right movements
-        if (currentNode->x > 0 && canMoveToPosition(currentNode->x - 1, currentNode->y, enemyWidth, enemyHeight)) neighbors.push_back(&grid[currentNode->x - 1][currentNode->y]); // Left
-        if (currentNode->x < screenWidth - 1 && canMoveToPosition(currentNode->x + 1, currentNode->y, enemyWidth, enemyHeight)) neighbors.push_back(&grid[currentNode->x + 1][currentNode->y]); // Right
-
-        // Check for jumps within the max jump height and width
-        for (int dx = -jumpWidth; dx <= jumpWidth; dx++) {
-            for (int dy = 1; dy <= jumpHeight; dy++) {
-                int nx = currentNode->x + dx;
-                int ny = currentNode->y - dy; // Adjust y-axis for SFML coordinate system (decrement)
-                if (nx >= 0 && nx < screenWidth && ny >= 0 && ny < screenHeight && canMoveToPosition(nx, ny, enemyWidth, enemyHeight)) {
-                    neighbors.push_back(&grid[nx][ny]); // Jump
-                }
+            if (obj.underline) {
+                modifiedText = (<u key={index}>{text}</u>);
             }
         }
 
-        // Check for falls within the max fall distance
-        for (int dy = 1; dy <= fallDistance; dy++) {
-            int ny = currentNode->y + dy;
-            if (ny < screenHeight && canMoveToPosition(currentNode->x, ny, enemyWidth, enemyHeight)) {
-                neighbors.push_back(&grid[currentNode->x][ny]); // Fall
-            }
+        switch (type) {
+            case 'heading-three':
+                return <h3 key={index} className="text-xl font-semibold mb-4">{modifiedText.map((item, i) => <React.Fragment key={i}>{item}</React.Fragment>)}</h3>;
+            case 'paragraph':
+                return <p key={index} className="mb-8">{modifiedText.map((item, i) => <React.Fragment key={i}>{item}</React.Fragment>)}</p>;
+            case 'heading-four':
+                return <h4 key={index} className="text-md font-semibold mb-4">{modifiedText.map((item, i) => <React.Fragment key={i}>{item}</React.Fragment>)}</h4>;
+            case 'image':
+                return (
+                    <div class="flex justify-center items-center mt-5 mb-5">
+                        <img
+                            key={index}
+                            alt={obj.title}
+                            height={obj.height}
+                            width={obj.width}
+                            src={obj.src}
+                        />
+                    </div>
+                );
+            case 'code-block':
+                return (
+                    <div className="overflow-x-auto mb-5 mt-5 rounded-lg">
+                        <CopyBlock key={index} text={modifiedText} language="jsx" showLineNumbers={true} theme={github} CodeBlock icon={<FaCopy />} onCopy={() => copy(modifiedText)} />
+                    </div>
+                )
+            default:
+                return modifiedText;
         }
+    };
 
-        for (auto neighbor : neighbors) {
-            if (!neighbor->walkable || std::find(closedSet.begin(), closedSet.end(), neighbor) != closedSet.end()) continue;
+    return (
+        <>
+            <div className=" rounded-lg p-5 pb-12 mb-8">
+                <div class=" order-last md:order-first relative ">
+                    <div className='grid items-end cover-gradient p-5 '>
+                        <div>
+                            <div>
+                                <h1 className="mb-4  title-post-detail">{post.title}</h1>
+                            </div>
+                            <div className='mt-3 flex flex-row md:gap-10 gap-4'>
+                                <div className="flex items-center mb-0 md:mb-3 w-full">
+                                    <div className=" md:flex  justify-center lg:mb-0 lg:w-auto mr-8 ">
+                                        <img
+                                            alt={post.author.name}
+                                            height="30px"
+                                            width="30px"
+                                            className="align-middle rounded-full inline"
+                                            src={post.author.photo.url}
+                                        />
+                                        <span className="inline align-middle ml-2  text-lg name-account-post-detail">{post.author.name}</span>
+                                    </div>
+                                    <div className="font-medium">
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 inline mr-2 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                        </svg>
+                                        <span className="align-middle text-lg name-account-post-detail">{moment(post.createdAt).format('MMM DD, YYYY')}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <img src={post.featuredImgae.url} alt="" className="object-cover  cover-chosen cover-post-details   w-full   shadow-lg" />
+                </div>
+                <div className="relative  mb-6 p-3">
+                </div>
+                <div className="px-4 lg:px-0 paragraph-post-details max-w-screen-xl items-center mx-auto ">
+                    {post.content.raw.children.map((typeObj, index) => {
+                        const children = typeObj.children.map((item, itemindex) => getContentFragment(itemindex, item.text, item));
 
-            float newGCost = currentNode->gCost + heuristic(*currentNode, *neighbor);
-            if (newGCost < neighbor->gCost || std::find(openSet.begin(), openSet.end(), neighbor) == openSet.end()) {
-                neighbor->gCost = newGCost;
-                neighbor->hCost = heuristic(*neighbor, targetNode);
-                neighbor->parent = currentNode;
+                        return getContentFragment(index, children, typeObj, typeObj.type);
+                    })}
+                </div>
+            </div>
 
-                if (std::find(openSet.begin(), openSet.end(), neighbor) == openSet.end()) {
-                    openSet.push_back(neighbor);
-                }
-            }
-        }
+        </>
+    );
+};
+
+export default PostDetail;
+```
+
+### data\post-data.js
+```
+export const posts = {
+    post: [
+        {
+            title: "Pink stairs leading to the sky",
+            summay: " refers to errors in thinking that can lead to incorrect perception and decision-making. They are an inherent part of our psychology and can affect [...]",
+            author: "Mehran Asadi",
+            date: "Apr 8, 2023",
+            image: "/post-image.png"
+        },
+        {
+            title: "Pink stairs leading to the sky",
+            summay: " refers to errors in thinking that can lead to incorrect perception and decision-making. They are an inherent part of our psychology and can affect [...]",
+            author: "Mehran Asadi",
+            date: "Apr 8, 2023",
+            image: "/post-image.png"
+        },
+        {
+            title: "Pink stairs leading to the sky",
+            summay: " refers to errors in thinking that can lead to incorrect perception and decision-making. They are an inherent part of our psychology and can affect [...]",
+            author: "Mehran Asadi",
+            date: "Apr 8, 2023",
+            image: "/post-image.png"
+        },
+        {
+            title: "Pink stairs leading to the sky",
+            summay: " refers to errors in thinking that can lead to incorrect perception and decision-making. They are an inherent part of our psychology and can affect [...]",
+            author: "Mehran Asadi",
+            date: "Apr 8, 2023",
+            image: "/post-image.png"
+        },
+        {
+            title: "Pink stairs leading to the sky",
+            summay: " refers to errors in thinking that can lead to incorrect perception and decision-making. They are an inherent part of our psychology and can affect [...]",
+            author: "Mehran Asadi",
+            date: "Apr 8, 2023",
+            image: "/post-image.png"
+        },
+        {
+            title: "Pink stairs leading to the sky",
+            summay: " refers to errors in thinking that can lead to incorrect perception and decision-making. They are an inherent part of our psychology and can affect [...]",
+            author: "Mehran Asadi",
+            date: "Apr 8, 2023",
+            image: "/post-image.png"
+        },
+        {
+            title: "Pink stairs leading to the sky",
+            summay: " refers to errors in thinking that can lead to incorrect perception and decision-making. They are an inherent part of our psychology and can affect [...]",
+            author: "Mehran Asadi",
+            date: "Apr 8, 2023",
+            image: "/post-image.png"
+        },
+    ]
+}
+```
+
+### package.json
+```
+{
+  "name": "cms_blog",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "flowbite": "^2.0.0",
+    "flowbite-react": "^0.6.4",
+    "graphql": "^16.8.1",
+    "graphql-request": "^6.1.0",
+    "html-react-parser": "^5.0.1",
+    "moment": "^2.29.4",
+    "next": "14.0.0",
+    "owl.carousel": "^2.3.4",
+    "react": "18.2.0",
+    "react-code-blocks": "^0.1.4",
+    "react-copy-to-clipboard": "^5.1.0",
+    "react-dom": "18.2.0",
+    "sass": "^1.69.5",
+    "swr": "^2.2.4"
+  },
+  "devDependencies": {
+    "autoprefixer": "^10.4.16",
+    "eslint": "8.52.0",
+    "eslint-config-next": "14.0.0",
+    "postcss": "^8.4.31",
+    "tailwindcss": "^3.3.5"
+  }
+}
+
+```
+
+### pages\api\comments.js
+```
+import { GraphQLClient, gql } from 'graphql-request';
+
+const graphqlAPI = process.env.NEXT_PUBLIC_GRAPHCMS_ENDPOINT;
+
+/** *************************************************************
+* Any file inside the folder pages/api is mapped to /api/* and  *
+* will be treated as an API endpoint instead of a page.         *
+*************************************************************** */
+
+// export a default function for API route to work
+export default async function asynchandler(req, res) {
+    const graphQLClient = new GraphQLClient((graphqlAPI), {
+        headers: {
+            authorization: `Bearer ${process.env.GRAPHCMS_TOKEN}`,
+        },
+    });
+
+    const query = gql`
+    mutation CreateComment($name: String!, $email: String!, $comment: String!, $slug: String!) {
+      createComment(data: {name: $name, email: $email, comment: $comment, post: {connect: {slug: $slug}}}) { id }
+    }
+  `;
+
+    const result = await graphQLClient.request(query, {
+        name: req.body.name,
+        email: req.body.email,
+        comment: req.body.comment,
+        slug: req.body.slug,
+    });
+
+    return res.status(200).send(result);
+}
+```
+
+### pages\category\[slug].js
+```
+"use client"
+
+import { useRouter } from 'next/router';
+import { getCategories, getCategoryPost } from '../../services';
+import Loader from '../../components/Loader';
+import Categories from '../../components/Categories';
+import Navbar from '../../components/Navbar';
+import Footer from '../../components/Footer';
+import Link from 'next/link';
+
+
+
+const CategoryPost = ({ posts }) => {
+    const router = useRouter();
+
+    if (router.isFallback) {
+        return <Loader />;
     }
 
-    return std::vector<PathFindingNode*>(); // Return an empty path if no path is found
+
+    return (
+        <>
+            <Navbar />
+            <div className='max-w-screen-xl  mx-auto p-2'>
+                <Categories />
+                <div className='flex flex-row justify-between p-3'>
+                    <div className='grid grid-cols-1  md:grid-cols-4 gap-6 mt-5 p-5'>
+                        {
+                            posts.map((item) => (
+                                <Link href={`/post/${item.node.slug}`}>
+                                    <div key={item.cursor} class="max-w-sm bg-white border border-gray-200 rounded-lg shadow dark:bg-gray-800 dark:border-gray-700">
+                                        <a href="#">
+                                            <img class="rounded-t-lg w-full h-full  object-cover image-cover-post " src={item.node.featuredImgae.url} width={300} height={200} alt="image post" />
+                                        </a>
+                                        <div class="p-5">
+                                            <a href="#">
+                                                <h5 class="mb-2 title-post-sub">{item.node.title}</h5>
+                                            </a>
+                                            <p class="mb-3 paragraph-post-sub">{item.node.excerpt}</p>
+                                            <a href="#" class="inline-flex items-center px-3 py-2 text-sm  text-center button-post-sub">
+                                                Read more
+                                                <svg class="w-3.5 h-3.5 ml-2" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 10">
+                                                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M1 5h12m0 0L9 1m4 4L9 9" />
+                                                </svg>
+                                            </a>
+                                        </div>
+                                    </div>
+                                </Link>
+                            ))
+                        }
+
+                    </div>
+                </div>
+            </div>
+            <Footer />
+        </>
+    )
 }
 
-void PathFinder::setGrid(std::vector<std::vector<PathFindingNode>>& grid)
-{
-    this->grid = grid;
+export default CategoryPost
+
+
+// Fetch data at build time
+export async function getStaticProps({ params }) {
+    const posts = await getCategoryPost(params.slug);
+
+    return {
+        props: { posts },
+    };
+}
+
+// Specify dynamic routes to pre-render pages based on data.
+// The HTML is generated at build time and will be reused on each request.
+export async function getStaticPaths() {
+    const categories = await getCategories();
+    return {
+        paths: categories.map(({ slug }) => ({ params: { slug } })),
+        fallback: true,
+    };
+}
+```
+
+### pages\index.js
+```
+import Landing from "../sections/Landing"
+import Categories from "../components/Categories"
+import ChosenBlog from "../sections/ChosenBlog"
+import SubmitedBlog from "../sections/SubmitedBlog"
+import Footer from "../components/Footer"
+
+
+export default function Home() {
+  return (
+    <div >
+
+      <Landing />
+      <Categories />
+      <ChosenBlog />
+      <SubmitedBlog />
+      <Footer />
+
+
+    </div>
+  )
 }
 
 ```
 
-### Z-Runner\PathFinder.h
+### pages\post\[slug].js
 ```
-#pragma once
+import { useRouter } from 'next/router';
+import Loader from '../../components/Loader';
+import Navbar from '../../components/Navbar';
+import Footer from '../../components/Footer';
+// import Comments from '../../components/Comments';
+// import CommentsForm from '../../components/CommentsForm';
 
-#include <vector>
-#include <algorithm>
-#include <iostream>
-#include "PathFindingNode.h"
+import { getPostDetails, getPosts } from '../../services';
 
-using namespace std;
-class PathFinder
-{
-private:
-	int screenWidth;
-	int screenHeight;
-	vector<vector<PathFindingNode>> grid;
+import PostDetail from '../../components/PostDetail';
 
-	float heuristic(const PathFindingNode& a, const PathFindingNode& b);
-	bool canMoveToPosition(int x, int y, int enemyWidth, int enemyHeight);
-public:
-	PathFinder(int screenWidth,int screenHeight);
 
-	vector<PathFindingNode*> findPath(PathFindingNode& startNode, PathFindingNode& targetNode, int enemyWidth, int enemyHeight, int jumpHeight, int jumpWidth, int fallDistance);
 
-	void setGrid(vector<vector<PathFindingNode>>& grid);
-};
 
+const PostDetails = ({ post }) => {
+    const router = useRouter();
 
-```
-
-### Z-Runner\PathFindingNode.cpp
-```
-#include "PathFindingNode.h"
-
-PathFindingNode::PathFindingNode(int x, int y, bool walkable) : x(x), y(y), walkable(walkable), gCost(0), hCost(0), parent(nullptr) {}
-
-
-float PathFindingNode::getFCost() const
-{
-    return gCost + hCost;
-}
-
-bool PathFindingNode::operator==(const PathFindingNode& other) const
-{
-	return x == other.x && y == other.y;
-}
-
-```
-
-### Z-Runner\PathFindingNode.h
-```
-#pragma once
-class PathFindingNode
-{
-public :
-    int x, y;
-    bool walkable;
-    float gCost, hCost;
-    PathFindingNode* parent;
-
-    PathFindingNode(int x, int y, bool walkable);
-
-    float getFCost() const;
-
-    bool operator==(const PathFindingNode& other) const;
-};
-
-
-```
-
-### Z-Runner\Platform.cpp
-```
-#include "Platform.h"
-Platform::Platform()
-{
-}
-void Platform::initialize(float width,float height,float x,float y,Color color,bool isPassThrough)
-{
-	shape.setFillColor(color);
-	shape.setSize(Vector2f(width, height));
-	shape.setPosition(x, y);
-	shape.setOutlineColor(Color::Transparent);
-	shape.setOutlineThickness(1.f);
-	shape.setOutlineColor(Color::Transparent);
-
-	this->ispassThrough = isPassThrough;
-}
-
-void Platform::updateColor(Color color)
-{
-}
-
-void Platform::updateSize(int width, int height)
-{
-}
-
-void Platform::updatePosition(float x, float y) {
-	shape.setPosition(x, y);
-}
-Vector2f Platform::getPosition()
-{
-	return shape.getPosition();
-}
-RectangleShape Platform::getBoundaryObject() {
-	return bounds;
-}
-RectangleShape Platform::getObject()
-{
-	return shape;
-}
-
-```
-
-### Z-Runner\Platform.h
-```
-#pragma once
-
-#include <SFML/Graphics/RectangleShape.hpp>
-
-using namespace sf;
-
-class Platform
-{
-private:
-	RectangleShape shape,bounds;
-
-public :
-	bool ispassThrough;
-
-	Platform();
-	void initialize(float width,float height,float x,float y, Color color,bool isPassThrough);
-
-	void updateColor(Color color);
-	void updateSize(int width, int height);
-	void updatePosition(float x, float y);
-
-	Vector2f getPosition();
-	RectangleShape getObject();
-	RectangleShape getBoundaryObject();
-};
-
-
-```
-
-### Z-Runner\Player.cpp
-```
-#include "Player.h"
-
-Player::Player()
-{
-	attackingTimer = nullptr;
-}
-
-void Player::initialize(float width, float height, float x, float y, unordered_map<string, vector<Texture*>>& texture)
-{
-	self.setPosition(x, y);
-
-	this->textures = texture;
-	self.setTexture(*texture["idle"][0]);
-
-	size = Vector2f(width, height);
-	updateSize(size);
-
-	attackingTimer = nullptr;
-	attackRate = 2;
-}
-
-
-Projectile* Player::shootAt(Vector2f target)
-{
-	delete attackingTimer;
-	canAttack = false;
-	attackingTimer =new Thread(bind( & Player::refreshAttack, this));
-	attackingTimer->launch();
-
-	target -= self.getPosition();
-	target = target*(BULLET_SPEED/sqrtf(target.x * target.x + target.y * target.y)) ;
-	return new Projectile(10, target, Vector2f(5, 2),self.getPosition(), Color::Yellow,false);
-}
-
-```
-
-### Z-Runner\Player.h
-```
-#pragma once
-
-#define BULLET_SPEED 250
-
-#define MOVEMENT_SPEED 100
-#define JUMP_HEIGHT 100
-
-#include<iostream>
-#include <functional>
-
-#include "Projectile.h"
-
-#include "Character.h"
-
-class Player : public Character
-{
-private:
-	vector<RectangleShape> gunShots;
-
-public:
-
-	Player();
-	void initialize(float width, float height, float x, float y, unordered_map<string, vector<Texture*>>& texture);
-
-	Projectile* shootAt(Vector2f target);
-
-};
-
-
-```
-
-### Z-Runner\Projectile.cpp
-```
-#include "Projectile.h"
-
-Projectile::Projectile(float damage, Vector2f velocity, Vector2f size,Vector2f init, Color color,bool isHostile)
-{
-	this->damage = damage;
-	this->velocity = velocity;
-	this->isHostile = isHostile;
-	projectile.setSize(size);
-	projectile.setFillColor(color);
-	projectile.setPosition(init);
-
-	updateThread = nullptr;
-}
-
-void Projectile::update(float deltaTime, vector<RectangleShape> shapes)
-{
-	if (destroyed) {
-		return;
-	}
-	projectile.setPosition(projectile.getPosition()+velocity * deltaTime);
-	projectile.setRotation(atan2f(velocity.y, velocity.x) * 57.3f);
-	delete updateThread;
-	updateThread = new Thread(bind(&Projectile::checkForCollision, this, shapes));
-	updateThread->launch();
-}
-void Projectile::checkForCollision(vector<RectangleShape> shapes)
-{
-	for (const RectangleShape& shape : shapes) {
-		float rect1[4] = { projectile.getPosition().x,projectile.getPosition().y,projectile.getSize().x,projectile.getSize().y };
-		rect1[2] += rect1[0];
-		rect1[3] += rect1[1];
-
-		float rect2[4] = { shape.getPosition().x,shape.getPosition().y,shape.getSize().x,shape.getSize().y };
-		rect1[2] += rect1[0];
-		rect1[3] += rect1[1];
-		if (projectile.getGlobalBounds().intersects(shape.getGlobalBounds()) || (rect1[0] > rect2[0] && rect1[0]<rect2[2] && rect1[1]>rect2[1] && rect1[1] < rect2[3])) {
-			destruct();
-		}
-	}
-	
-}
-
-void Projectile::destruct()
-{
-	destroyed = true;
-	velocity=Vector2f(0,0);
-}
-
-float Projectile::getDamage()
-{
-	return damage;
-}
-
-RectangleShape Projectile::getObject()
-{
-	return projectile;
-}
-
-```
-
-### Z-Runner\Projectile.h
-```
-#pragma once
-
-#include <SFML/Graphics/RectangleShape.hpp>
-#include <SFML/System/Thread.hpp>
-#include <iostream>
-#include <functional>
-#include <vector>
-
-using namespace sf;
-using namespace std;
-
-class Projectile
-{
-private:
-	float damage;
-	Vector2f velocity;
-	RectangleShape projectile;
-	Thread* updateThread;
-
-public:
-	Projectile(float damage, Vector2f velocity, Vector2f size,Vector2f init, Color color,bool isHostile);
-	bool destroyed = false;
-	bool isHostile = false;
-
-	void update(float deltaTime , vector<RectangleShape> shapes);
-	void checkForCollision(vector<RectangleShape> shapes);
-	
-	void destruct();
-	float getDamage();
-
-	RectangleShape getObject();
-};
-
-
-```
-
-### Z-Runner\SceneGenerator.cpp
-```
-#include "SceneGenerator.h"
-
-void SceneGenerator::generateScene()
-{
-	isGeneratingScene = true;
-
-	srand(time(NULL));
-	SceneTypes sceneType = static_cast<SceneTypes>(rand() % END);
-
-	if (sceneType == Plain||true) {
-		for (int i = 0; i < (10 + rand() % 5); i++) {
-			gameObjects.Enemies.push_back(new Enemy(50,  fmod(rand(), (screenWidth * 0.8)) + screenWidth * 0.1, baseLine-20, Textures["zombie"]));
-		}
-	}
-	else if (sceneType == Normal) {
-
-	}
-
-	gameObjects.id = gameObjects.id + 1;
-
-	isGeneratingScene = false;
-}
-
-SceneGenerator::SceneGenerator(GameObjects& gameObjects,int baseLine, float screenWidth, float screenHeight):gameObjects(gameObjects)
-{
-	this->baseLine = baseLine;
-	this -> screenWidth = screenWidth;
-	this -> screenHeight = screenHeight;
-
-
-	generatorThread = nullptr;
-}
-
-void SceneGenerator::setTextures(unordered_map<string, unordered_map<string, vector<Texture*>>>& textures)
-{
-	this->Textures = textures;
-}
-
-void SceneGenerator::generateNextScene()
-{
-	if (isGeneratingScene) return;
-	delete generatorThread;
-	generatorThread = new Thread(&SceneGenerator::generateScene, this);
-	generatorThread->launch();
-}
-
-
-
-```
-
-### Z-Runner\SceneGenerator.h
-```
-#pragma once
-
-#include <stdlib.h>
-#include <time.h>
-#include <vector>
-
-#include <SFML/System/Thread.hpp>
-
-#include "Enemy.h"
-#include "Platform.h"
-#include "Player.h"
-#include "Projectile.h"
-
-using namespace std;
-
-enum SceneTypes {
-	Normal,
-	Parkour,
-	ParkourWithZombies,
-	Plain,
-	BossArena,
-	END
-};
-
-typedef struct GameObjects {
-	vector<Enemy*> Enemies;
-	vector<Platform> Platforms;
-	vector<Projectile*> Projectiles;
-	int id=0;
-} GameObjects;
-		
-class SceneGenerator
-{
-private :
-
-	Thread* generatorThread;
-	unordered_map<string, unordered_map<string, vector<Texture*>>> Textures;
-
-	int baseLine;
-	float screenWidth;
-	float screenHeight;
-
-	void generateScene();
-public :
-	GameObjects& gameObjects;
-	bool isGeneratingScene;
-	SceneGenerator(GameObjects& gameObjects, int baseLine, float screenWidth, float screenHeight);
-	void setTextures(unordered_map<string, unordered_map<string, vector<Texture*>>>& textures);
-	void generateNextScene();
-};
-
-
-```
-
-### Z-Runner\Z-Runner.cpp
-```
-#include <iostream>
-#include "Game.h"
-
-using namespace sf;
-
-int main()
-{
-    Game game;
-
-    while (game.isRunning()) {
-        game.update();
-        game.render();
+    if (router.isFallback) {
+        return <Loader />;
     }
-    return 0;
+
+    console.log(post);
+
+
+
+    return (
+        <>
+            <Navbar />
+            <PostDetail post={post} />
+            {/* <Comments /> */}
+            {/* <CommentsForm /> */}
+            <Footer />
+        </>
+    )
+
+
+
+
+}
+
+export default PostDetails
+
+
+
+
+
+// Fetch data at build time
+export async function getStaticProps({ params }) {
+    const data = await getPostDetails(params.slug);
+    return {
+        props: {
+            post: data,
+        },
+    };
+}
+
+// Specify dynamic routes to pre-render pages based on data.
+// The HTML is generated at build time and will be reused on each request.
+export async function getStaticPaths() {
+    const posts = await getPosts();
+    return {
+        paths: posts.map(({ node: { slug } }) => ({ params: { slug } })),
+        fallback: true,
+    };
+}
+```
+
+### pages\search\result.js
+```
+import { useState } from 'react';
+import Link from 'next/link';
+import Navbar from '../../components/Navbar'
+import Footer from '../../components/Footer'
+import Categories from './../../components/Categories';
+
+
+import { getPosts } from '../../services';
+
+function result() {
+    const [search, setsearch] = useState("")
+    const [posts, setposts] = useState([])
+
+
+    const handleSearch = async () => {
+        try {
+            console.log('Search:', search);
+
+            const fetchedPosts = await getPosts(search);
+            setposts(fetchedPosts)
+
+            console.log('Fetched Posts:', posts);
+        } catch (error) {
+            console.log(error);
+            setposts([]); // Clear the posts array
+        }
+    };
+
+
+    return (
+        <>
+            <Navbar />
+            <Categories />
+            <div className='max-w-screen-xl  justify-between mx-auto min-h-screen p-5'>
+
+                <form onSubmit={(e) => {
+                    e.preventDefault();
+                    handleSearch()
+                }}>
+                    <label for="default-search" class="mb-2 text-sm font-medium text-gray-900 sr-only dark:text-white">Search</label>
+                    <div class="relative">
+                        <input onChange={(e) => setsearch(e.target.value)} type="search" id="default-search" class="  block w-full p-4 ps-10 text-sm text-gray-900 border border-gray-300 rounded-lg bg-gray-50 focus:ring-gray-500 focus:border-gray-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-gray-500 dark:focus:border-gray-500" placeholder="Search Mockups, Logos..." required />
+                        <button type="submit" class="text-white absolute end-2.5 bottom-2.5 bg-gray-700 hover:bg-gray-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-4 py-2 dark:bg-gray-600 dark:hover:bg-gray-700 dark:focus:ring-gray-800">Search</button>
+                    </div>
+                </form>
+
+                {/* post cart */}
+
+                <div className='grid grid-cols-1  md:grid-cols-4 gap-6 mt-5 p-5'>
+
+                    {
+                        posts.filter((item) => search === "" || item.node.title.toLowerCase().includes(search.toLowerCase())).map((item) => (
+                            <Link href={`/post/${item.node.slug}`} >
+                                <div key={item.cursor} class="max-w-sm bg-white border border-gray-200 rounded-lg shadow dark:bg-gray-800 dark:border-gray-700">
+                                    <a href="#">
+                                        <img class="rounded-t-lg w-full h-full  object-cover image-cover-post " src={item.node.featuredImgae.url} width={300} height={200} alt="image post" />
+                                    </a>
+                                    <div class="p-5">
+                                        <a href="#">
+                                            <h5 class="mb-2 title-post-sub">{item.node.title}</h5>
+                                        </a>
+                                        <p class="mb-3 paragraph-post-sub">{item.node.excerpt}</p>
+                                        <a href="#" class="inline-flex items-center px-3 py-2 text-sm  text-center button-post-sub">
+                                            Read more
+                                            <svg class="w-3.5 h-3.5 ml-2" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 10">
+                                                <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M1 5h12m0 0L9 1m4 4L9 9" />
+                                            </svg>
+                                        </a>
+                                    </div>
+                                </div>
+                            </Link>
+                        ))
+                    }
+
+
+                </div>
+                {/* end psot cat  */}
+
+            </div>
+
+            <Footer />
+        </>
+    )
+}
+
+export default result
+```
+
+### pages\_app.js
+```
+import '../styles/globals.css'
+
+function MyApp({ Component, pageProps }) {
+  return <Component {...pageProps} />
+}
+
+export default MyApp
+
+```
+
+### postcss.config.js
+```
+module.exports = {
+  plugins: {
+    tailwindcss: {},
+    autoprefixer: {},
+  },
 }
 
 ```
 
-### Z-Runner\Z-Runner.vcxproj
+### README.md
 ```
-<?xml version="1.0" encoding="utf-8"?>
-<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <ItemGroup Label="ProjectConfigurations">
-    <ProjectConfiguration Include="Debug|Win32">
-      <Configuration>Debug</Configuration>
-      <Platform>Win32</Platform>
-    </ProjectConfiguration>
-    <ProjectConfiguration Include="Release|Win32">
-      <Configuration>Release</Configuration>
-      <Platform>Win32</Platform>
-    </ProjectConfiguration>
-    <ProjectConfiguration Include="Debug|x64">
-      <Configuration>Debug</Configuration>
-      <Platform>x64</Platform>
-    </ProjectConfiguration>
-    <ProjectConfiguration Include="Release|x64">
-      <Configuration>Release</Configuration>
-      <Platform>x64</Platform>
-    </ProjectConfiguration>
-  </ItemGroup>
-  <PropertyGroup Label="Globals">
-    <VCProjectVersion>17.0</VCProjectVersion>
-    <Keyword>Win32Proj</Keyword>
-    <ProjectGuid>{01e5ab7e-5623-4563-b714-406831ea844d}</ProjectGuid>
-    <RootNamespace>ZRunner</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
-  </PropertyGroup>
-  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
-    <ConfigurationType>Application</ConfigurationType>
-    <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v143</PlatformToolset>
-    <CharacterSet>Unicode</CharacterSet>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
-    <ConfigurationType>Application</ConfigurationType>
-    <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v143</PlatformToolset>
-    <WholeProgramOptimization>true</WholeProgramOptimization>
-    <CharacterSet>Unicode</CharacterSet>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
-    <ConfigurationType>Application</ConfigurationType>
-    <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v143</PlatformToolset>
-    <CharacterSet>Unicode</CharacterSet>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
-    <ConfigurationType>Application</ConfigurationType>
-    <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v143</PlatformToolset>
-    <WholeProgramOptimization>true</WholeProgramOptimization>
-    <CharacterSet>Unicode</CharacterSet>
-  </PropertyGroup>
-  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
-  <ImportGroup Label="ExtensionSettings">
-  </ImportGroup>
-  <ImportGroup Label="Shared">
-  </ImportGroup>
-  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-  </ImportGroup>
-  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-  </ImportGroup>
-  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-  </ImportGroup>
-  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-  </ImportGroup>
-  <PropertyGroup Label="UserMacros" />
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <ClCompile>
-      <WarningLevel>Level3</WarningLevel>
-      <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\Projects\S2_OOPs_Assignment\Z-Runner\External\include</AdditionalIncludeDirectories>
-      <LanguageStandard>stdcpp17</LanguageStandard>
-    </ClCompile>
-    <Link>
-      <SubSystem>Console</SubSystem>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>C:\Projects\S2_OOPs_Assignment\Z-Runner\External\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>sfml-system-d.lib;sfml-graphics-d.lib;sfml-window-d.lib;sfml-audio-d.lib;sfml-network-d.lib;%(AdditionalDependencies)</AdditionalDependencies>
-    </Link>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <ClCompile>
-      <WarningLevel>Level3</WarningLevel>
-      <FunctionLevelLinking>true</FunctionLevelLinking>
-      <IntrinsicFunctions>true</IntrinsicFunctions>
-      <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\Projects\S2_OOPs_Assignment\Z-Runner\External\include</AdditionalIncludeDirectories>
-      <LanguageStandard>stdcpp17</LanguageStandard>
-    </ClCompile>
-    <Link>
-      <SubSystem>Console</SubSystem>
-      <EnableCOMDATFolding>true</EnableCOMDATFolding>
-      <OptimizeReferences>true</OptimizeReferences>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>C:\Projects\S2_OOPs_Assignment\Z-Runner\External\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>sfml-system.lib;sfml-graphics.lib;sfml-window.lib;sfml-audio.lib;sfml-network.lib;%(AdditionalDependencies)</AdditionalDependencies>
-    </Link>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <ClCompile>
-      <WarningLevel>Level3</WarningLevel>
-      <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\Projects\S2_OOPs_Assignment\Z-Runner\External\include</AdditionalIncludeDirectories>
-      <AdditionalUsingDirectories>
-      </AdditionalUsingDirectories>
-      <LanguageStandard>stdcpp17</LanguageStandard>
-    </ClCompile>
-    <Link>
-      <SubSystem>Console</SubSystem>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>C:\Projects\S2_OOPs_Assignment\Z-Runner\External\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>sfml-system-d.lib;sfml-graphics-d.lib;sfml-window-d.lib;sfml-audio-d.lib;sfml-network-d.lib;%(AdditionalDependencies)</AdditionalDependencies>
-    </Link>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <ClCompile>
-      <WarningLevel>Level3</WarningLevel>
-      <FunctionLevelLinking>true</FunctionLevelLinking>
-      <IntrinsicFunctions>true</IntrinsicFunctions>
-      <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\Projects\S2_OOPs_Assignment\Z-Runner\External\include</AdditionalIncludeDirectories>
-      <AdditionalUsingDirectories>
-      </AdditionalUsingDirectories>
-      <LanguageStandard>stdcpp17</LanguageStandard>
-    </ClCompile>
-    <Link>
-      <SubSystem>Console</SubSystem>
-      <EnableCOMDATFolding>true</EnableCOMDATFolding>
-      <OptimizeReferences>true</OptimizeReferences>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>C:\Projects\S2_OOPs_Assignment\Z-Runner\External\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>sfml-system.lib;sfml-graphics.lib;sfml-window.lib;sfml-audio.lib;sfml-network.lib;%(AdditionalDependencies)</AdditionalDependencies>
-    </Link>
-  </ItemDefinitionGroup>
-  <ItemGroup>
-    <ClCompile Include="Character.cpp" />
-    <ClCompile Include="Enemy.cpp" />
-    <ClCompile Include="Game.cpp" />
-    <ClCompile Include="Object.cpp" />
-    <ClCompile Include="PathFinder.cpp" />
-    <ClCompile Include="PathFindingNode.cpp" />
-    <ClCompile Include="Platform.cpp" />
-    <ClCompile Include="Player.cpp" />
-    <ClCompile Include="Projectile.cpp" />
-    <ClCompile Include="SceneGenerator.cpp" />
-    <ClCompile Include="Z-Runner.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="Character.h" />
-    <ClInclude Include="Enemy.h" />
-    <ClInclude Include="Game.h" />
-    <ClInclude Include="Object.h" />
-    <ClInclude Include="PathFinder.h" />
-    <ClInclude Include="PathFindingNode.h" />
-    <ClInclude Include="Platform.h" />
-    <ClInclude Include="Player.h" />
-    <ClInclude Include="Projectile.h" />
-    <ClInclude Include="SceneGenerator.h" />
-  </ItemGroup>
-  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
-  <ImportGroup Label="ExtensionTargets">
-  </ImportGroup>
-</Project>
+<img src="https://github.com/Mehranlip/PersonalBlog-NextJs-GraphCms/assets/60979458/d420fea5-bf90-4e01-8517-8eeb33e6d4b6" />
+
+# Getting Started
+1-Go to https://hygraph.com and register <br/>
+2-Go to https://app.hygraph.com/clone/acf04dd03aa54f20bc08dee86ba55094?name=Mehran_blog and clone the project<br/>
+3-Go to the project settings and find and copy the API Content option in the API Access section <br/>
+4-Now paste the API Content in the specified place in the env file <br/>
+5-Run project <br/>
+``` npm install ``` <br/>
+``` npm run dev ```
+
+
+
 ```
 
-### Z-Runner\Z-Runner.vcxproj.filters
+### sections\ChosenBlog.js
 ```
-﻿<?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <ItemGroup>
-    <Filter Include="Source Files">
-      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
-      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
-    </Filter>
-    <Filter Include="Header Files">
-      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
-      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
-    </Filter>
-    <Filter Include="Resource Files">
-      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
-      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
-    </Filter>
-  </ItemGroup>
-  <ItemGroup>
-    <ClCompile Include="Z-Runner.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Game.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Enemy.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Platform.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Player.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Projectile.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="SceneGenerator.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="PathFinder.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="PathFindingNode.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Object.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Character.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="Game.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Enemy.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Platform.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Player.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Projectile.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="SceneGenerator.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="PathFinder.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="PathFindingNode.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Object.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Character.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-  </ItemGroup>
-</Project>
+"use client"
+import { useState, useEffect } from 'react';
+import moment from 'moment';
+import Image from 'next/image'
+import Link from 'next/link';
+
+
+
+import CoverChosen from '../public/static-image/chosen-cover.png'
+import account from "../public/icon/account.svg"
+import comments from "../public/icon/comment.svg"
+import date from "../public/icon/calendar.svg"
+
+import account_dark from "../public/icon/dark-icon/account.svg"
+import date_dark from "../public/icon/dark-icon/calendar.svg"
+
+import { getPosts } from '../services'
+
+
+
+function ChosenBlog() {
+
+
+    const [posts, setPosts] = useState([]);
+
+    useEffect(() => {
+        const fetchPosts = async () => {
+            try {
+                const postData = await getPosts();
+                setPosts(postData);
+            } catch (error) {
+                console.error('Error fetching posts:', error);
+            }
+        };
+
+        fetchPosts();
+    }, []);
+
+
+
+
+
+    return (
+        <div class=" grid md:grid-cols-2 grid-cols-1 gap-4 justify-center items-center max-w-screen-xl  mx-auto p-4  ">
+            <div class=" order-last md:order-first relative ">
+                <div className='grid items-end cover-gradient p-5 '>
+                    <div>
+                        <div>
+                            <h1 className='title-cover'>
+                                For the Architecture & Interiors
+                            </h1>
+                            <p className='paragraph-cover mt-3'>
+                                Los Angeles, United States <br />
+                                Unknown device. And additional discription here.
+                            </p>
+                        </div>
+                        <div className='mt-3 flex flex-row md:gap-10 gap-4'>
+                            <div>
+                                <Image src={account} width={20} height={20} className='inline ' />
+                                <span className='name-account ml-2'>Mehran Asadi</span>
+                            </div>
+                            <div>
+                                <Image src={comments} width={20} height={20} className='inline ' />
+                                <span className='name-account ml-2'>9 Comments</span>
+                            </div>
+                            <div>
+                                <Image src={date} width={20} height={20} className='inline ' />
+                                <span className='name-account ml-2'>Apr 8, 2023</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <Image src={CoverChosen} className='cover-chosen' alt='cover' />
+            </div>
+            <div class="  p-2 order-first md:order-last ">
+                {posts.slice(0, 3).map((item) => (
+                    <div key={item.cursor} className='grid md:grid-cols-3 grid-cols-1 p-2 mt-3'>
+                        <div className='col-span-1    '>
+                            <Image src={item.node.featuredImgae.url} className='rounded-lg w-full h-full shadow-lg object-cover  ' width={300} height={280} alt='image-post' />
+                        </div>
+                        <div className=' col-span-2 p-3 col-start-1 '>
+                            <Link href={`/post/${item.node.slug}`}>
+                                <h1 className='title-chosen'>
+                                    {item.node.title}
+                                </h1>
+                            </Link>
+                            <p className='summary-shosen mt-3  '>
+                                {item.node.excerpt}
+                            </p>
+                            <div className='mt-3 flex flex-row md:gap-10 gap-4'>
+                                <div>
+                                    <Image src={account_dark} width={20} height={20} className='inline ' alt="icon" />
+                                    <span className=' name-account-chosen ml-2'>{item.node.author.name}</span>
+                                </div>
+                                <div>
+                                    <Image src={date_dark} width={20} height={20} className='inline ' alt="icon" />
+                                    <span className='name-account-chosen ml-2'>{moment(item.node.createdAt).format('MMM DD, YYYY')}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </div>
+    )
+}
+
+
+
+export default ChosenBlog
+
+
 ```
 
-### Z-Runner\Z-Runner.vcxproj.user
+### sections\Landing.js
 ```
-﻿<?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
-  </PropertyGroup>
-  <PropertyGroup>
-    <ShowAllFiles>false</ShowAllFiles>
-  </PropertyGroup>
-</Project>
+import React from 'react'
+import Navbar from '../components/Navbar'
+
+function Landing() {
+    return (
+        <>
+            <div className='Landing '>
+                <Navbar />
+                <div class=" grid md:grid-cols-2 grid-cols-1 gap-4 justify-center items-center max-w-screen-xl  mx-auto p-4  ">
+                    <div class="p-2 order-last md:order-first">
+                        <h1 className='title_landing'>
+                            Submit your article
+                            and join our network!
+                        </h1>
+                        <p className='paragraph_landing mt-5 md:mt-11'>
+                            Don't waste time and join our community of authors! Share your knowledge
+                            and experience with our readers and get the opportunity to become
+                            a part of our professional and creative team!
+                        </p>
+                        <button className='button_landing px-5 py-2 mt-5 md:mt-11 '>
+                            Submit Article
+                        </button>
+                    </div>
+                    <div class=" landing_image p-2 order-first md:order-last ">
+
+                    </div>
+                </div>
+
+
+            </div>
+
+        </>
+    )
+}
+
+export default Landing
 ```
 
-### Z-Runner.sln
+### sections\SubmitedBlog.js
 ```
-﻿
-Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 17
-VisualStudioVersion = 17.10.35013.160
-MinimumVisualStudioVersion = 10.0.40219.1
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Z-Runner", "Z-Runner\Z-Runner.vcxproj", "{01E5AB7E-5623-4563-B714-406831EA844D}"
-EndProject
-Global
-	GlobalSection(SolutionConfigurationPlatforms) = preSolution
-		Debug|x64 = Debug|x64
-		Debug|x86 = Debug|x86
-		Release|x64 = Release|x64
-		Release|x86 = Release|x86
-	EndGlobalSection
-	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{01E5AB7E-5623-4563-B714-406831EA844D}.Debug|x64.ActiveCfg = Debug|x64
-		{01E5AB7E-5623-4563-B714-406831EA844D}.Debug|x64.Build.0 = Debug|x64
-		{01E5AB7E-5623-4563-B714-406831EA844D}.Debug|x86.ActiveCfg = Debug|Win32
-		{01E5AB7E-5623-4563-B714-406831EA844D}.Debug|x86.Build.0 = Debug|Win32
-		{01E5AB7E-5623-4563-B714-406831EA844D}.Release|x64.ActiveCfg = Release|x64
-		{01E5AB7E-5623-4563-B714-406831EA844D}.Release|x64.Build.0 = Release|x64
-		{01E5AB7E-5623-4563-B714-406831EA844D}.Release|x86.ActiveCfg = Release|Win32
-		{01E5AB7E-5623-4563-B714-406831EA844D}.Release|x86.Build.0 = Release|Win32
-	EndGlobalSection
-	GlobalSection(SolutionProperties) = preSolution
-		HideSolutionNode = FALSE
-	EndGlobalSection
-	GlobalSection(ExtensibilityGlobals) = postSolution
-		SolutionGuid = {82180E5A-CD01-432C-A599-F8A5B67676D8}
-	EndGlobalSection
-EndGlobal
+"use client"
+import { useState, useEffect } from 'react';
 
+import Image from 'next/image'
+
+import { getPosts } from '../services'
+import Link from 'next/link';
+
+
+
+function SubmitedBlog() {
+    const [posts, setPosts] = useState([]);
+    const [displayCount, setDisplayCount] = useState(4);
+
+    useEffect(() => {
+        const fetchPosts = async () => {
+            try {
+                const postData = await getPosts();
+                setPosts(postData);
+            } catch (error) {
+                console.error('Error fetching posts:', error);
+            }
+        };
+
+        fetchPosts();
+    }, []);
+
+
+    const handleShowMore = () => {
+        setDisplayCount(displayCount + 4); // Increment the displayed post count by 4
+    };
+
+
+
+    return (
+        <div className='max-w-screen-xl  mx-auto p-2'>
+            <div className='flex flex-row justify-between p-3'>
+                <span className='title-sub'>Submited Articles</span>
+                <div className='text-right'>
+                    <Image className='inline ' src="/icon/up-right-arrow 1.svg" width={50} height={50} />
+                </div>
+            </div>
+
+            <div>
+
+                <div className='grid grid-cols-1  md:grid-cols-4 gap-6 mt-5 p-5'>
+                    {
+                        posts.slice(0, displayCount).map((item) => (
+                            <Link href={`/post/${item.node.slug}`} >
+                                <div key={item.cursor} class="max-w-sm bg-white border border-gray-200 rounded-lg shadow dark:bg-gray-800 dark:border-gray-700">
+                                    <a href="#">
+                                        <img class="rounded-t-lg w-full h-full  object-cover image-cover-post " src={item.node.featuredImgae.url} width={300} height={200} alt="image post" />
+                                    </a>
+                                    <div class="p-5">
+                                        <a href="#">
+                                            <h5 class="mb-2 title-post-sub">{item.node.title}</h5>
+                                        </a>
+                                        <p class="mb-3 paragraph-post-sub">{item.node.excerpt}</p>
+                                        <a href="#" class="inline-flex items-center px-3 py-2 text-sm  text-center button-post-sub">
+                                            Read more
+                                            <svg class="w-3.5 h-3.5 ml-2" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 10">
+                                                <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M1 5h12m0 0L9 1m4 4L9 9" />
+                                            </svg>
+                                        </a>
+                                    </div>
+                                </div>
+                            </Link>
+                        ))
+                    }
+
+                </div>
+                <div className='grid grid-rows-3'>
+                    <button onClick={handleShowMore}>
+                        <a href="#" class="inline-flex items-center px-3 py-2 text-sm  text-center button-post-sub ">
+                            Show More Post
+                            <svg class="w-3.5 h-3.5 ml-2" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 10">
+                                <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M1 5h12m0 0L9 1m4 4L9 9" />
+                            </svg>
+                        </a>
+                    </button>
+                </div>
+
+
+
+            </div>
+        </div >
+    )
+}
+
+export default SubmitedBlog
+```
+
+### services\index.js
+```
+import { request, gql } from 'graphql-request';
+
+const graphqlAPI = process.env.NEXT_PUBLIC_GRAPHCMS_ENDPOINT;
+
+export const getPosts = async () => {
+  const query = gql`
+    query MyQuery {
+      postsConnection {
+        edges {
+          cursor
+          node {
+            author {
+              bio
+              name
+              id
+              photo {
+                url
+              }
+            }
+            featuredImgae {
+              url
+            }
+            createdAt
+            slug
+            title
+            excerpt
+            categories {
+              name
+              slug
+            }
+          }
+        }
+      }
+    }
+  `;
+
+  const result = await request(graphqlAPI, query);
+
+  return result.postsConnection.edges;
+};
+
+export const getCategories = async () => {
+  const query = gql`
+    query GetGategories {
+        categories {
+          name
+          slug
+        }
+    }
+  `;
+
+  const result = await request(graphqlAPI, query);
+
+  return result.categories;
+};
+
+export const getPostDetails = async (slug) => {
+  const query = gql`
+    query GetPostDetails($slug : String!) {
+      post(where: {slug: $slug}) {
+        title
+        excerpt
+        featuredImgae {
+          url
+        }
+        author{
+          name
+          bio
+          photo {
+            url
+          }
+        }
+        createdAt
+        slug
+        content {
+          raw
+        }
+        categories {
+          name
+          slug
+        }
+      }
+    }
+  `;
+
+  const result = await request(graphqlAPI, query, { slug });
+
+  return result.post;
+};
+
+// export const getSimilarPosts = async (categories, slug) => {
+//     const query = gql`
+//     query GetPostDetails($slug: String!, $categories: [String!]) {
+//       posts(
+//         where: {slug_not: $slug, AND: {categories_some: {slug_in: $categories}}}
+//         last: 3
+//       ) {
+//         title
+//         featuredImage {
+//           url
+//         }
+//         createdAt
+//         slug
+//       }
+//     }
+//   `;
+//     const result = await request(graphqlAPI, query, { slug, categories });
+
+//     return result.posts;
+// };
+
+// export const getAdjacentPosts = async (createdAt, slug) => {
+//     const query = gql`
+//     query GetAdjacentPosts($createdAt: DateTime!,$slug:String!) {
+//       next:posts(
+//         first: 1
+//         orderBy: createdAt_ASC
+//         where: {slug_not: $slug, AND: {createdAt_gte: $createdAt}}
+//       ) {
+//         title
+//         featuredImage {
+//           url
+//         }
+//         createdAt
+//         slug
+//       }
+//       previous:posts(
+//         first: 1
+//         orderBy: createdAt_DESC
+//         where: {slug_not: $slug, AND: {createdAt_lte: $createdAt}}
+//       ) {
+//         title
+//         featuredImage {
+//           url
+//         }
+//         createdAt
+//         slug
+//       }
+//     }
+//   `;
+
+//     const result = await request(graphqlAPI, query, { slug, createdAt });
+
+//     return { next: result.next[0], previous: result.previous[0] };
+// };
+
+export const getCategoryPost = async (slug) => {
+  const query = gql`
+    query GetCategoryPost($slug: String!) {
+      postsConnection(where: {categories_some: {slug: $slug}}) {
+        edges {
+          cursor
+          node {
+            author {
+              bio
+              name
+              id
+              photo {
+                url
+              }
+            }
+            featuredImgae {
+              url
+            }
+            createdAt
+            slug
+            title
+            excerpt
+            categories {
+              name
+              slug
+            }
+          }
+        }
+      }
+    }
+  `;
+
+  const result = await request(graphqlAPI, query, { slug });
+
+  return result.postsConnection.edges;
+};
+
+// export const getFeaturedPosts = async () => {
+//     const query = gql`
+//     query GetCategoryPost() {
+//       posts(where: {featuredPost: true}) {
+//         author {
+//           name
+//           photo {
+//             url
+//           }
+//         }
+//         featuredImage {
+//           url
+//         }
+//         title
+//         slug
+//         createdAt
+//       }
+//     }
+//   `;
+
+//     const result = await request(graphqlAPI, query);
+
+//     return result.posts;
+// };
+
+// export const submitComment = async (obj) => {
+//   const result = await fetch('/api/comments', {
+//     method: 'POST',
+//     headers: {
+//       'Content-Type': 'application/json',
+//     },
+//     body: JSON.stringify(obj),
+//   });
+
+//   return result.json();
+// };
+
+// export const getComments = async (slug) => {
+//   const query = gql`
+//     query GetComments($slug:String!) {
+//       comments(where: {post: {slug:$slug}}){
+//         name
+//         createdAt
+//         comment
+//       }
+//     }
+//   `;
+
+//   const result = await request(graphqlAPI, query, { slug });
+
+//   return result.comments;
+// };
+
+// export const getRecentPosts = async () => {
+//     const query = gql`
+//     query GetPostDetails() {
+//       posts(
+//         orderBy: createdAt_ASC
+//         last: 3
+//       ) {
+//         title
+//         featuredImage {
+//           url
+//         }
+//         createdAt
+//         slug
+//       }
+//     }
+//   `;
+//     const result = await request(graphqlAPI, query);
+
+//     return result.posts;
+// };
+```
+
+### styles\globals.css
+```
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* tailwind css  */
+
+/* font face */
+
+@font-face {
+  font-family: "Kaisei Decol Bold";
+  src: url("../public/font/KaiseiDecol-Bold.woff");
+}
+
+@font-face {
+  font-family: "Kaisei Decol";
+  src: url("../public/font/KaiseiDecol-Medium.woff");
+}
+
+@font-face {
+  font-family: "Kaisei Decol Regular";
+  src: url("../public/font/KaiseiDecol-Regular.woff");
+}
+
+@font-face {
+  font-family: "Lato";
+  src: url("../public/font/Lato-Regular.woff");
+}
+
+/* end font face */
+
+/* Navbar */
+.Main_logo {
+  color: var(--general-body-text, #333);
+  font-family: Kaisei Decol;
+  font-size: 25px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: normal;
+}
+
+.Navbar_link {
+  color: var(--general-body-text, #333);
+  text-align: center;
+  font-family: Lato;
+  font-size: 16px;
+  font-style: normal;
+  font-weight: 300;
+  line-height: normal;
+}
+
+.button_navbar {
+  color: var(--general-body-text, #333);
+  text-align: center;
+  font-family: Lato;
+  font-size: 16px;
+  font-style: normal;
+  font-weight: 700;
+  line-height: normal;
+  letter-spacing: 0.8px;
+  background-color: white !important;
+}
+
+/* end Navbar  */
+
+/* Landing  */
+.Landing {
+  background: var(--main-primary-one, #edecff);
+  height: fit-content;
+}
+
+.title_landing {
+  color: var(--general-body-text, #333);
+  font-family: Kaisei Decol;
+  font-size: 56px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: normal;
+}
+
+.paragraph_landing {
+  color: var(--general-body-text, #333);
+  font-family: Lato;
+  font-size: 16px;
+  font-style: normal;
+  font-weight: 300;
+  line-height: 24px;
+  /* 150% */
+}
+
+.button_landing {
+  color: var(--general-body-text, #333);
+  text-align: center;
+  font-family: Lato;
+  font-size: 16px;
+  font-style: normal;
+  font-weight: 700;
+  line-height: normal;
+  letter-spacing: 0.8px;
+  border-left: 4px solid var(--general-body-text, #333);
+  background: var(--main-primary-three, #fdd9d3);
+}
+
+@media only screen and (max-width: 600px) {
+  .landing_image {
+    height: 50dvh !important;
+  }
+
+  .title_landing {
+    font-size: 35px;
+  }
+
+  .cat_main {
+    display: none;
+  }
+
+  .name-account {
+    font-size: 10px !important;
+  }
+
+  .title-sub {
+    font-size: 30px !important;
+  }
+}
+
+.landing_image {
+  background-image: url("../public/static-image/landing_image.svg");
+  background-repeat: no-repeat;
+  background-size: contain;
+  height: 90dvh;
+  width: 100%;
+  background-position: center;
+}
+
+/* end Landing */
+
+/* Categories */
+
+.cat_main {
+  color: var(--general-body-text, #333);
+  font-family: Kaisei Decol;
+  font-size: 16px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 24px;
+  /* 150% */
+}
+
+.cat_title {
+  color: var(--general-body-text, #333);
+  font-family: Kaisei Decol;
+  font-size: 16px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 24px;
+  /* 150% */
+  /* text-decoration-line: overline; */
+  border-bottom: solid 1.5px #000000;
+  padding-bottom: 3px;
+}
+
+/* end Categories */
+
+/* chosen Blog */
+.cover-gradient {
+  border-radius: 32px;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.00) 16.25%, rgba(0, 0, 0, 0.21) 50.62%, rgba(0, 0, 0, 0.72) 100%);
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.cover-chosen {
+  width: 100%;
+  height: 100%;
+}
+
+.title-cover {
+  color: #FFF;
+  font-family: Kaisei Decol;
+  font-size: 24px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: normal;
+}
+
+.paragraph-cover {
+  color: #FFF;
+  font-family: Lato;
+  font-size: 16px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 24px;
+  /* 150% */
+}
+
+.name-account {
+  color: #FFF;
+  font-family: Lato;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 18px;
+  /* 150% */
+}
+
+.name-account-chosen {
+  color: #000000;
+  font-family: Lato;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 18px;
+  /* 150% */
+}
+
+.title-chosen {
+  color: var(--general-body-text, #333);
+  font-family: Kaisei Decol;
+  font-size: 20px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: normal;
+}
+
+.summary-shosen {
+  color: var(--general-body-text, #333);
+  font-family: Lato;
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 300;
+  line-height: 24px;
+  text-align: justify;
+  /* 150% */
+}
+
+
+
+/* end chosen Blog */
+
+/* submited blog */
+.title-sub {
+  color: var(--general-body-text, #333);
+  font-family: Kaisei Decol;
+  font-size: 35px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: normal;
+}
+
+
+.title-post-sub {
+  color: var(--general-body-text, #333);
+  font-family: Kaisei Decol;
+  font-size: 25px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: normal;
+}
+
+.paragraph-post-sub {
+  color: var(--general-body-text, #333);
+  font-family: Lato;
+  font-size: 16px;
+  font-style: normal;
+  font-weight: 300;
+  line-height: 24px;
+  text-align: justify;
+}
+
+.button-post-sub {
+  color: var(--general-body-text, #333);
+  font-family: Kaisei Decol;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: normal;
+}
+
+/* end submited blog */
+
+/* Footer */
+
+.footer-link {
+  color: var(--general-body-text, #333);
+  text-align: center;
+  font-family: Lato;
+  font-size: 16px;
+  font-style: normal;
+  font-weight: 300;
+  line-height: normal;
+}
+
+.copyright {
+  color: var(--general-body-text, #333);
+  font-family: Kaisei Decol;
+  font-size: 15px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: normal;
+}
+
+.image-cover-post {
+  height: 200px !important;
+}
+
+/* end Footer */
+
+/* // post Detailes */
+.title-post-detail {
+  color: var(--general-body-text, #ffffff);
+  font-family: Kaisei Decol;
+  font-size: 35px !important;
+  font-style: normal;
+  font-weight: 400;
+  line-height: normal;
+}
+
+.name-account-post-detail {
+  color: #ffffff;
+  font-family: Lato;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 18px;
+}
+
+.cover-post-details {
+  border-radius: 32px;
+  height: 80dvh;
+}
+
+.paragraph-post-details {
+  color: var(--general-body-text, #333);
+  font-family: Lato;
+  font-size: 20px;
+  font-style: normal;
+  font-weight: 500;
+  line-height: 24px;
+  text-align: justify;
+  /* 150% */
+}
+
+
+@media only screen and (max-width: 600px) {
+  .title-post-detail {
+    font-size: 25px !important;
+  }
+
+  .cover-post-details {
+    height: 50dvh;
+  }
+
+  .name-account-post-detail {
+    font-size: 15px !important;
+  }
+}
+
+
+/* // end post Detailes */
+```
+
+### tailwind.config.js
+```
+/** @type {import('tailwindcss').Config} */
+module.exports = {
+  content: [
+    "./app/**/*.{js,ts,jsx,tsx,mdx}",
+    "./pages/**/*.{js,ts,jsx,tsx,mdx}",
+    "./components/**/*.{js,ts,jsx,tsx,mdx}",
+
+  ],
+  theme: {
+    extend: {},
+  },
+  plugins: [
+    require("flowbite/plugin")
+  ],
+}
 ```
 
