@@ -5,6 +5,7 @@ import "reactflow/dist/style.css"; // Import React Flow styles
 
 interface ClassDiagramProps {
   fileContent: string;
+  onClassClick: (className: string) => void; // Callback for class click
 }
 
 // Define expected Gemini output interface
@@ -91,7 +92,7 @@ const ClassNode = ({ data }: { data: any }) => {
   );
 };
 
-const ClassDiagram: React.FC<ClassDiagramProps> = ({ fileContent }) => {
+const ClassDiagram: React.FC<ClassDiagramProps> = ({ fileContent, onClassClick }) => {
   const [nodes, setNodes, onNodesChange] = useNodesState<Node[]>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -144,26 +145,36 @@ const ClassDiagram: React.FC<ClassDiagramProps> = ({ fileContent }) => {
   
         // Add inheritance relationships
         if (cls.inheritsFrom) {
-          parsedEdges.push({
-            id: `e-${cls.name}-${cls.inheritsFrom}-inheritance`, // Add a suffix to make the ID unique
-            source: cls.inheritsFrom,
-            target: cls.name,
-            type: "smoothstep",
-            label: "inherits",
-          });
+          if (cls.name && cls.inheritsFrom) { // Ensure both source and target are defined
+            console.log(`Creating edge: source=${cls.inheritsFrom}, target=${cls.name}`);
+            parsedEdges.push({
+              id: `e-${cls.name}-${cls.inheritsFrom}`,
+              source: cls.inheritsFrom,
+              target: cls.name,
+              type: "smoothstep", // Use a valid edge type
+              label: "inherits",
+            });
+          } else {
+            console.warn(`Invalid edge: source (${cls.inheritsFrom}) or target (${cls.name}) is undefined.`);
+          }
         }
       });
     }
   
     // Add relationships between classes
     geminiOutput?.relationships?.forEach((rel, index) => {
-      parsedEdges.push({
-        id: `e-${rel.source}-${rel.target}-${index}`, // Append the index to ensure uniqueness
-        source: rel.source,
-        target: rel.target,
-        type: rel.type || "smoothstep",
-        label: rel.type || "relation",
-      });
+      if (rel.source && rel.target) { // Ensure both source and target are defined
+        console.log(`Creating relationship edge: source=${rel.source}, target=${rel.target}`);
+        parsedEdges.push({
+          id: `e-${rel.source}-${rel.target}-${index}`,
+          source: rel.source,
+          target: rel.target,
+          type: "smoothstep",
+          label: rel.type || "relation",
+        });
+      } else {
+        console.warn(`Invalid relationship edge: source (${rel.source}) or target (${rel.target}) is undefined.`);
+      }
     });
   
     setNodes(parsedNodes);
@@ -190,6 +201,15 @@ const ClassDiagram: React.FC<ClassDiagramProps> = ({ fileContent }) => {
     analyzeFileContent();
   }, [fileContent]);
 
+  const handleNodeClick = (event: React.MouseEvent, node: Node) => {
+    if (event.ctrlKey) {
+      console.log(`Ctrl + Click triggered on class: ${node.id}`); // Log the class name and trigger
+      onClassClick(node.id); // Trigger highlight on Ctrl + Click
+    } else {
+      console.log(`Click detected on class: ${node.id}, but Ctrl key was not pressed.`); // Log when Ctrl is not pressed
+    }
+  };
+
   return (
     <ReactFlowProvider>
       <div style={{ height: "500px", width: "100%" }}>
@@ -199,9 +219,10 @@ const ClassDiagram: React.FC<ClassDiagramProps> = ({ fileContent }) => {
           edges={edges}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
-          connectionLineType={ConnectionLineType.SmoothStep} // Smooth step connection
+          onNodeClick={handleNodeClick} // Add Ctrl + Click handler for nodes
+          connectionLineType={ConnectionLineType.SmoothStep}
           fitView
-          nodeTypes={nodeTypes} // Use memoized nodeTypes
+          nodeTypes={nodeTypes}
         >
           <Background variant="dots" gap={16} size={1} />
         </ReactFlow>

@@ -38,19 +38,16 @@ export default function Dashboard() {
 
       {/* Chatbot Popup */}
       {isChatbotOpen && (
-        <div className="fixed bottom-20 right-4 sm:right-8 w-72 sm:w-96 bg-white border border-gray-300 rounded-lg shadow-lg">
-          <div className="flex justify-between items-center p-4 border-b border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-800">Chatbot</h3>
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+          <div className="relative w-full max-w-lg h-full max-h-[90vh] bg-white rounded-lg shadow-lg overflow-hidden">
             <button
               onClick={toggleChatbot}
-              className="text-gray-500 hover:text-gray-700 focus:outline-none"
+              className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 focus:outline-none"
               aria-label="Close Chatbot"
             >
               ✖
             </button>
-          </div>
-          <div className="p-4 max-h-80 overflow-y-auto">
-            <Chatbot onClose={toggleChatbot} />
+            <Chatbot />
           </div>
         </div>
       )}

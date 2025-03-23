@@ -1,13 +1,13 @@
 "use client";
-import { useState,useEffect} from "react";
+import { useState, useEffect } from "react";
+import ReactMarkdown from "react-markdown";
 
 export default function Summarizer() {
     const [summary, setSummary] = useState("");
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
-const [role, setRole] = useState("outsider");
-   
-  
+    const [role, setRole] = useState("outsider");
+
     // Retrieve role from localStorage on component mount
     useEffect(() => {
       const storedRole = localStorage.getItem("userRole");
@@ -15,11 +15,15 @@ const [role, setRole] = useState("outsider");
         setRole(storedRole);
       }
     }, []);
+
     const fetchSummary = async () => {
         setLoading(true);
         setError("");
         try {
-            const response = await fetch("/api/summarizer", { method: "POST", body: JSON.stringify({role}), },);
+            const response = await fetch("/api/summarizer", { 
+                method: "POST", 
+                body: JSON.stringify({ role }),
+            });
             const data = await response.json();
             setSummary(data.summary);
         } catch (err) {
@@ -52,7 +56,8 @@ const [role, setRole] = useState("outsider");
             {summary && (
                 <div className="mt-6 p-4 bg-gray-100 rounded-lg shadow-inner">
                     <h3 className="text-lg font-medium text-gray-700 mb-2">Summary:</h3>
-                    <pre className="text-sm text-gray-800 overflow-auto">{summary}</pre>
+                    {/* Render the markdown content */}
+                    <ReactMarkdown>{summary}</ReactMarkdown>
                 </div>
             )}
         </div>

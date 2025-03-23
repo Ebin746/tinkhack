@@ -3,6 +3,8 @@ import { useState, useEffect } from "react";
 import { FaFolder, FaFolderOpen, FaFileAlt } from "react-icons/fa"; // Icons for folders and files
 import LowLevelDiagram from "./LowLevelDiagram";
 import ClassDiagram from "./ClassDiagram";
+import { Light as SyntaxHighlighter } from "react-syntax-highlighter";
+import { docco } from "react-syntax-highlighter/dist/esm/styles/hljs"; // Syntax highlighting style
 
 // Component for rendering the folder structure with collapsibility
 function FileTree({
@@ -77,6 +79,7 @@ export default function FileTreeRenderer() {
   const [fileDiagnostics, setFileDiagnostics] = useState("");
   const [selectedFileContent, setSelectedFileContent] = useState(""); // Store the file content separately
   const [selectedFileType, setSelectedFileType] = useState<"lowLevel" | "classDiagram" | null>(null); // Track the selected diagram type
+  const [highlightedClass, setHighlightedClass] = useState<string | null>(null); // Track the selected class for highlighting
 
   useEffect(() => {
     const fetchFolderStructure = async () => {
@@ -113,6 +116,32 @@ export default function FileTreeRenderer() {
     }
   };
 
+  const handleClassClick = (className: string) => {
+    console.log(`Class clicked: ${className}`); // Debug log
+    setHighlightedClass(className); // Update the highlighted class
+  };
+
+  const getHighlightedCode = () => {
+    if (!highlightedClass || !selectedFileContent) return selectedFileContent;
+
+    // Debug log to check the highlighted class and file content
+    console.log("Highlighted Class:", highlightedClass);
+    console.log("File Content:", selectedFileContent);
+
+    // Highlight the selected class definition
+    const lines = selectedFileContent.split("\n");
+    return lines
+      .map((line) => {
+        // Check if the line contains the class definition
+        const isClassDefinition = new RegExp(`\\bclass\\s+${highlightedClass}\\b`).test(line);
+        if (isClassDefinition) {
+          console.log("Highlighting line:", line); // Debug log for highlighted line
+          return `<span style="background-color: yellow;">${line}</span>`;
+        }
+        return line;
+      })
+      .join("\n");
+  };
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
       <h1 className="text-3xl font-bold text-gray-800 mb-6">📂 Folder Structure</h1>
@@ -158,7 +187,7 @@ export default function FileTreeRenderer() {
       {selectedFileContent && selectedFileType === "classDiagram" && (
         <div className="mt-6 bg-white shadow-lg rounded-lg p-6">
           <h2 className="text-xl font-semibold text-gray-800 mb-4">Class Diagram</h2>
-          <ClassDiagram fileContent={selectedFileContent} />
+          <ClassDiagram fileContent={selectedFileContent} onClassClick={handleClassClick} />
         </div>
       )}
 
@@ -166,9 +195,43 @@ export default function FileTreeRenderer() {
       {fileDiagnostics && (
         <div className="mt-6 p-6 bg-white shadow-lg rounded-lg">
           <h2 className="text-xl font-semibold text-gray-800 mb-4">File Content</h2>
-          <pre className="mt-2 text-gray-700 bg-gray-100 p-4 rounded-lg overflow-auto">
-            {fileDiagnostics}
-          </pre>
+          <SyntaxHighlighter
+  language="typescript"
+  style={docco}
+  wrapLines={true}
+  lineProps={(lineNumber) => {
+    const lines = selectedFileContent.split("\n"); // Split content into lines
+    const line = lines[lineNumber - 1]; // Get the current line (lineNumber is 1-based)
+
+    // Debug logs to verify line content and lineNumber
+    console.log(`Line ${lineNumber}:`, line);
+
+    if (!line) {
+      // If line is undefined, return default style
+      return {
+        style: {
+          backgroundColor: "transparent",
+        },
+      };
+    }
+
+    const isClassDefinition =
+      highlightedClass &&
+      new RegExp(`\\b(?:export\\s+)?(?:default\\s+)?class\\s+${highlightedClass}\\b`).test(line);
+
+    if (isClassDefinition) {
+      console.log(`Highlighting line ${lineNumber}:`, line); // Debug log for highlighted line
+    }
+
+    return {
+      style: {
+        backgroundColor: isClassDefinition ? "yellow" : "transparent",
+      },
+    };
+  }}
+>
+  {selectedFileContent}
+</SyntaxHighlighter>
         </div>
       )}
     </div>
